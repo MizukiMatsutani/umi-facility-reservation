@@ -1,0 +1,30 @@
+{
+  "filePath": ".spec-workflow/specs/umi-facility-search/requirements.md",
+  "currentVersion": 3,
+  "snapshots": [
+    {
+      "version": 1,
+      "filename": "snapshot-001.json",
+      "timestamp": "2025-12-05T14:16:03.939Z",
+      "trigger": "initial",
+      "approvalId": "approval_1764944163926_106601iyb",
+      "approvalTitle": "要件定義ドキュメント (requirements.md) の承認"
+    },
+    {
+      "version": 2,
+      "filename": "snapshot-002.json",
+      "timestamp": "2025-12-05T14:36:24.854Z",
+      "trigger": "revision_requested",
+      "approvalId": "approval_1764944579217_j8lr869pn",
+      "approvalTitle": "要件定義ドキュメント (requirements.md) の承認 [修正版]"
+    },
+    {
+      "version": 3,
+      "filename": "snapshot-003.json",
+      "timestamp": "2025-12-05T14:38:34.464Z",
+      "trigger": "approved",
+      "approvalId": "approval_1764945449487_bfsw19am0",
+      "approvalTitle": "要件定義ドキュメント (requirements.md) の承認 [修正版2]"
+    }
+  ]
+}

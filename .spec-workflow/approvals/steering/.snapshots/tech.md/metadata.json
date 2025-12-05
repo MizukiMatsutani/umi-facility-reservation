@@ -1,0 +1,30 @@
+{
+  "filePath": ".spec-workflow/steering/tech.md",
+  "currentVersion": 3,
+  "snapshots": [
+    {
+      "version": 1,
+      "filename": "snapshot-001.json",
+      "timestamp": "2025-12-05T13:44:17.828Z",
+      "trigger": "initial",
+      "approvalId": "approval_1764942257817_s3hfg0j0p",
+      "approvalTitle": "技術スタックドキュメント (tech.md) の承認"
+    },
+    {
+      "version": 2,
+      "filename": "snapshot-002.json",
+      "timestamp": "2025-12-05T13:52:50.995Z",
+      "trigger": "revision_requested",
+      "approvalId": "approval_1764942257817_s3hfg0j0p",
+      "approvalTitle": "技術スタックドキュメント (tech.md) の承認"
+    },
+    {
+      "version": 3,
+      "filename": "snapshot-003.json",
+      "timestamp": "2025-12-05T14:05:35.315Z",
+      "trigger": "approved",
+      "approvalId": "approval_1764942854826_n76oyf20n",
+      "approvalTitle": "技術スタックドキュメント (tech.md) の承認 [修正版]"
+    }
+  ]
+}

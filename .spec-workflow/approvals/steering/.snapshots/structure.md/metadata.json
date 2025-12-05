@@ -1,0 +1,22 @@
+{
+  "filePath": ".spec-workflow/steering/structure.md",
+  "currentVersion": 2,
+  "snapshots": [
+    {
+      "version": 1,
+      "filename": "snapshot-001.json",
+      "timestamp": "2025-12-05T14:07:30.543Z",
+      "trigger": "initial",
+      "approvalId": "approval_1764943650530_e7pm786y6",
+      "approvalTitle": "プロジェクト構造ドキュメント (structure.md) の承認"
+    },
+    {
+      "version": 2,
+      "filename": "snapshot-002.json",
+      "timestamp": "2025-12-05T14:10:36.252Z",
+      "trigger": "approved",
+      "approvalId": "approval_1764943650530_e7pm786y6",
+      "approvalTitle": "プロジェクト構造ドキュメント (structure.md) の承認"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "id": "approval_1764946562330_6wb102444",
+  "title": "設計ドキュメント (design.md) の承認 [修正版]",
+  "filePath": ".spec-workflow/specs/umi-facility-search/design.md",
+  "type": "document",
+  "status": "approved",
+  "createdAt": "2025-12-05T14:56:02.330Z",
+  "category": "spec",
+  "categoryName": "umi-facility-search",
+  "response": "ダッシュボードから承認",
+  "respondedAt": "2025-12-05T14:56:07.987Z"
+}

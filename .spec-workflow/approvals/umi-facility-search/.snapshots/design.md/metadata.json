@@ -1,0 +1,30 @@
+{
+  "filePath": ".spec-workflow/specs/umi-facility-search/design.md",
+  "currentVersion": 3,
+  "snapshots": [
+    {
+      "version": 1,
+      "filename": "snapshot-001.json",
+      "timestamp": "2025-12-05T14:42:22.349Z",
+      "trigger": "initial",
+      "approvalId": "approval_1764945742342_kzehnik2i",
+      "approvalTitle": "設計ドキュメント (design.md) の承認"
+    },
+    {
+      "version": 2,
+      "filename": "snapshot-002.json",
+      "timestamp": "2025-12-05T14:53:54.190Z",
+      "trigger": "revision_requested",
+      "approvalId": "approval_1764945742342_kzehnik2i",
+      "approvalTitle": "設計ドキュメント (design.md) の承認"
+    },
+    {
+      "version": 3,
+      "filename": "snapshot-003.json",
+      "timestamp": "2025-12-05T14:56:07.986Z",
+      "trigger": "approved",
+      "approvalId": "approval_1764946562330_6wb102444",
+      "approvalTitle": "設計ドキュメント (design.md) の承認 [修正版]"
+    }
+  ]
+}
