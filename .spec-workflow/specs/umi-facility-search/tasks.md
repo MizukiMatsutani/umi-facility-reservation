@@ -8,7 +8,7 @@
 
 ### 1.1 Next.jsプロジェクトの初期化
 
-- [ ] 1.1.1 Next.js 15.x プロジェクトのセットアップ
+- [x] 1.1.1 Next.js 15.x プロジェクトのセットアップ
   - ファイル: プロジェクトルート
   - Next.js 15.x (App Router) プロジェクトを pnpm create next-app で作成
   - TypeScript、ESLint、TailwindCSSを有効化
