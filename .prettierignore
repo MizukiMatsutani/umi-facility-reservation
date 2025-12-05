@@ -1,0 +1,39 @@
+# 依存関係
+node_modules
+.pnpm-store
+pnpm-lock.yaml
+
+# ビルド出力
+.next
+out
+dist
+build
+
+# キャッシュ
+.turbo
+.cache
+
+# ログ
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# テストカバレッジ
+coverage
+
+# spec-workflow関連
+.spec-workflow
+.serena
+
+# ドキュメント（自動生成やアーカイブ）
+docs/archive
+
+# その他
+.DS_Store
+*.pem
+.env*.local
+.vercel
+first-requirement.md

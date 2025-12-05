@@ -16,7 +16,7 @@
   - _要件: 技術標準（tech.md）_
   - _プロンプト: Role: DevOps Engineer with expertise in Next.js and modern web development tooling | Task: Initialize a Next.js 15.x project with App Router, TypeScript, ESLint, and TailwindCSS using pnpm, following tech.md standards | Restrictions: Must use pnpm 9.x, Node.js 20.x, enable all recommended TypeScript strict checks, configure Vercel deployment settings | Success: Project initialized successfully, all dependencies installed, basic structure follows Next.js 15 best practices, TypeScript compiles without errors_
 
-- [ ] 1.1.2 プロジェクト構造の作成
+- [x] 1.1.2 プロジェクト構造の作成
   - ファイル: src/ディレクトリ構造全体
   - structure.mdに従ったディレクトリ構造を作成
   - app/, components/, lib/ ディレクトリを作成
@@ -27,23 +27,23 @@
 
 ### 1.2 開発環境の設定
 
-- [ ] 1.2.1 ESLintとPrettierの設定
-  - ファイル: .eslintrc.json, .prettierrc
+- [x] 1.2.1 ESLintとPrettierの設定
+  - ファイル: eslint.config.mjs, .prettierrc, .prettierignore
   - ESLintとPrettierの設定ファイルを作成
   - Next.js推奨ルールを適用
   - 目的: コード品質とフォーマットの統一
   - _要件: 非機能要件（メンテナンス性）_
   - _プロンプト: Role: Code Quality Engineer with expertise in ESLint and Prettier configuration | Task: Configure ESLint and Prettier for Next.js 15.x project with TypeScript, following strict code quality standards | Restrictions: Must use Next.js recommended rules, enable TypeScript-specific rules, ensure no conflicting rules between ESLint and Prettier | Success: ESLint and Prettier configured correctly, no rule conflicts, code can be linted and formatted without errors_
 
-- [ ] 1.2.2 TailwindCSS設定のカスタマイズ
-  - ファイル: tailwind.config.ts, src/styles/globals.css
+- [x] 1.2.2 TailwindCSS設定のカスタマイズ
+  - ファイル: src/app/globals.css
   - TailwindCSSのブレークポイント設定（モバイルファースト）
   - カラーパレット、フォントサイズの定義
   - 目的: デザインシステムの基盤を構築
   - _要件: 要件6（レスポンシブデザイン）_
   - _プロンプト: Role: Frontend Developer specializing in TailwindCSS and design systems | Task: Customize TailwindCSS configuration for mobile-first design with Japanese typography, defining breakpoints (mobile: ~640px, tablet: 641-1024px, desktop: 1025px+), color palette, and font sizes (minimum 16px for body text) | Restrictions: Must prioritize mobile viewport, ensure accessibility (contrast ratio 4.5:1+), use system fonts for Japanese, define tap-target minimum 44px utility class | Success: TailwindCSS configured for mobile-first, all breakpoints defined, Japanese typography properly configured, design tokens established_
 
-- [ ] 1.2.3 Vitestのセットアップ
+- [x] 1.2.3 Vitestのセットアップ
   - ファイル: vitest.config.ts, src/__tests__/setup.ts
   - Vitestのインストールと設定
   - テストユーティリティのセットアップ
