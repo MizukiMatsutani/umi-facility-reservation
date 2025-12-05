@@ -53,7 +53,7 @@
 
 ### 1.3 型定義の作成
 
-- [ ] 1.3.1 コアデータ型の定義
+- [x] 1.3.1 コアデータ型の定義
   - ファイル: src/lib/types/index.ts
   - Facility, AvailabilityData, TimeSlot 型を定義
   - SearchParams, TimeRange 型を定義
@@ -62,7 +62,7 @@
   - _要件: 要件1（日付と時間帯による検索）, 要件2（検索結果表示）_
   - _プロンプト: Role: TypeScript Developer specializing in type systems and data modeling | Task: Define core TypeScript interfaces (Facility, AvailabilityData, TimeSlot, SearchParams, TimeRange) following design.md data models with strict type safety | Restrictions: Must use strict TypeScript settings, add JSDoc comments for all types, ensure type compatibility across system, use readonly where appropriate | Success: All data types defined and exported, types compile without errors, comprehensive JSDoc documentation, type safety enforced_
 
-- [ ] 1.3.2 API型の定義
+- [x] 1.3.2 API型の定義
   - ファイル: src/lib/types/api.ts
   - ScrapeRequest, ScrapeResponse 型を定義
   - ErrorResponse 型を定義
