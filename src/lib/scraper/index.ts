@@ -11,9 +11,9 @@ import type {
   AvailabilityData,
   TimeRange,
   FacilityAvailability,
+  TimeSlot,
 } from '@/lib/types';
 import { parseFacilities, parseAvailability } from './parser';
-import { filterTimeSlots } from '@/lib/utils/timeFilter';
 
 /**
  * 宇美町施設予約システムのスクレイピングクラス
@@ -310,8 +310,9 @@ export class FacilityScraper {
           const label = checkbox.parentElement?.textContent?.trim() || '';
 
           return {
-            id: checkbox.value, // 施設ID（例: "341007"）
-            name: label,        // 施設名（例: "宇美勤労者体育センター"）
+            id: checkbox.value,  // 施設ID（例: "341007"）
+            name: label,         // 施設名（例: "宇美勤労者体育センター"）
+            type: 'basketball' as const, // TODO: 施設タイプの判別ロジック
           };
         });
       });
@@ -346,10 +347,11 @@ export class FacilityScraper {
     dates: Date[],
     timeRange?: TimeRange
   ): Promise<AvailabilityData[]> {
-    // 施設一覧ページから直接、本日の予定をスクレイピング
-    // このページには既に各施設の「本日の予定」が表示されている
+    // 各日付に対して空き状況を取得
+    const results: AvailabilityData[] = [];
     
     try {
+      // 施設一覧ページから「本日の予定」をスクレイピング
       // 施設名を含む見出しを探す（例: "宇美勤労者体育センターの本日の予定"）
       const facilitySchedule = await page.evaluate((facilityName) => {
         // 施設名を含むh2要素を探す
@@ -399,51 +401,52 @@ export class FacilityScraper {
         return [];
       }
 
-      // 本日の日付のデータとして返す
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      // 各日付に対して空き状況データを生成
+      for (const targetDate of dates) {
+        const dateObj = new Date(targetDate);
+        dateObj.setHours(0, 0, 0, 0);
 
-      // facilityScheduleを AvailabilityData 形式に変換
-      const slots: TimeSlot[] = [];
-      
-      for (const area of facilitySchedule) {
-        for (const slot of area.slots) {
-          // 時間範囲をパース（例: "9:00～13:00"）
-          const timeMatch = slot.timeRange.match(/(\d+):(\d+)～(\d+):(\d+)/);
-          if (!timeMatch) continue;
+        // facilityScheduleをTimeSlot形式に変換
+        const slots: TimeSlot[] = [];
+        
+        for (const area of facilitySchedule) {
+          for (const slot of area.slots) {
+            // 時間範囲をパース（例: "9:00～13:00"）
+            const timeMatch = slot.timeRange.match(/(\d+):(\d+)～(\d+):(\d+)/);
+            if (!timeMatch) continue;
 
-          const startHour = parseInt(timeMatch[1]);
-          const startMinute = parseInt(timeMatch[2]);
-          const endHour = parseInt(timeMatch[3]);
-          const endMinute = parseInt(timeMatch[4]);
+            const startHour = parseInt(timeMatch[1]);
+            const startMinute = parseInt(timeMatch[2]);
 
-          const startTime = new Date(today);
-          startTime.setHours(startHour, startMinute, 0, 0);
+            // 開始時刻を文字列として構築（例: "9:00"）
+            const timeString = `${startHour}:${startMinute.toString().padStart(2, '0')}`;
 
-          const endTime = new Date(today);
-          endTime.setHours(endHour, endMinute, 0, 0);
+            // 利用者が「」または空の場合は空きとみなす
+            const available = !slot.user || slot.user === '';
 
-          // 利用者が「」または空の場合は空きとみなす
-          const isAvailable = !slot.user || slot.user === '';
+            slots.push({
+              time: timeString,
+              available,
+            });
+          }
+        }
 
-          slots.push({
-            startTime,
-            endTime,
-            isAvailable,
-            area: area.areaName,
-            user: slot.user || undefined,
-            purpose: slot.purpose || undefined,
+        // 時間範囲でフィルタリング
+        let filteredSlots = slots;
+        if (timeRange) {
+          filteredSlots = slots.filter(slot => {
+            // timeRange.fromとtimeRange.toの範囲内の時間帯のみを含める
+            return slot.time >= timeRange.from && slot.time <= timeRange.to;
           });
         }
+
+        results.push({
+          date: dateObj,
+          slots: filteredSlots,
+        });
       }
 
-      // 時間範囲でフィルタリング
-      const filteredSlots = timeRange ? filterTimeSlots(slots, timeRange) : slots;
-
-      return [{
-        date: today,
-        slots: filteredSlots,
-      }];
+      return results;
 
     } catch (error) {
       console.error(
