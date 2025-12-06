@@ -132,7 +132,7 @@
 
 ### 3.1 RateLimiterの実装
 
-- [ ] 3.1.1 RateLimiterのテスト作成
+- [x] 3.1.1 RateLimiterのテスト作成
   - ファイル: src/lib/scraper/__tests__/rateLimiter.test.ts
   - レート制限チェックのテストケース作成
   - 同時リクエスト制限のテストケース作成
@@ -140,7 +140,7 @@
   - _要件: 要件3（スクレイピング）_
   - _プロンプト: Role: QA Engineer specializing in rate limiting and concurrency testing | Task: Write unit tests for RateLimiter class enforcing 5-second minimum interval between requests and preventing concurrent requests, including timing verification tests | Restrictions: Must test timing accuracy (±100ms tolerance), test concurrent request blocking, verify request release, use fake timers for test speed | Success: Rate limiter test suite complete, covers timing and concurrency scenarios, tests fail initially, clear rate limiting expectations_
 
-- [ ] 3.1.2 RateLimiterの実装
+- [x] 3.1.2 RateLimiterの実装
   - ファイル: src/lib/scraper/rateLimiter.ts
   - checkRateLimit: レート制限チェック
   - releaseRequest: リクエスト完了通知
@@ -151,7 +151,7 @@
 
 ### 3.2 HTMLパーサーの実装
 
-- [ ] 3.2.1 HTMLパーサーのテスト作成
+- [x] 3.2.1 HTMLパーサーのテスト作成
   - ファイル: src/lib/scraper/__tests__/parser.test.ts
   - parseFacilities関数のテストケース作成
   - parseAvailability関数のテストケース作成
@@ -159,7 +159,7 @@
   - _要件: 要件3（スクレイピング）_
   - _プロンプト: Role: QA Engineer with expertise in HTML parsing and web scraping testing | Task: Write unit tests for HTML parser functions (parseFacilities, parseAvailability) using sample HTML fixtures, testing both successful parsing and malformed HTML scenarios | Restrictions: Must use realistic HTML fixtures from actual scraping target, test error cases (missing elements, changed structure), verify type correctness | Success: Parser test suite complete with HTML fixtures, covers success and error cases, tests fail initially, clear parsing expectations defined_
 
-- [ ] 3.2.2 HTMLパーサーの実装
+- [x] 3.2.2 HTMLパーサーの実装
   - ファイル: src/lib/scraper/parser.ts
   - parseFacilities: 施設一覧の抽出
   - parseAvailability: 空き状況の抽出
@@ -170,7 +170,7 @@
 
 ### 3.3 再試行ロジックの実装
 
-- [ ] 3.3.1 再試行ロジックのテスト作成
+- [x] 3.3.1 再試行ロジックのテスト作成
   - ファイル: src/lib/utils/__tests__/retry.test.ts
   - fetchWithRetry関数のテストケース作成
   - リトライ回数と遅延のテストケース作成
@@ -178,7 +178,7 @@
   - _要件: 要件3（スクレイピング）, 要件5（エラー表示）_
   - _プロンプト: Role: QA Engineer specializing in error handling and retry logic testing | Task: Write unit tests for fetchWithRetry function with configurable retry count (default 1) and 2-second delay, testing success after retry, exhausted retries, and immediate success scenarios | Restrictions: Must use fake timers for delay testing, test with mocked async functions, verify retry count accuracy, test error propagation | Success: Retry logic test suite complete, covers all retry scenarios, tests fail initially, clear retry behavior expectations_
 
-- [ ] 3.3.2 再試行ロジックの実装
+- [x] 3.3.2 再試行ロジックの実装
   - ファイル: src/lib/utils/retry.ts
   - fetchWithRetry: 自動再試行機能
   - sleep: 遅延ユーティリティ
