@@ -236,7 +236,7 @@
 
 ### 4.1 API /api/scrape の実装
 
-- [ ] 4.1.1 APIルートの基本構造作成
+- [-] 4.1.1 APIルートの基本構造作成
   - ファイル: src/app/api/scrape/route.ts
   - POST ハンドラの骨格作成
   - リクエスト/レスポンス型の適用
@@ -245,7 +245,7 @@
   - _要件: 要件3（スクレイピング）_
   - _プロンプト: Role: API Developer with expertise in Next.js App Router API routes | Task: Create /api/scrape route.ts with POST handler skeleton, applying ScrapeRequest and ScrapeResponse types, following Next.js 15 API route conventions | Restrictions: Must use Next.js 15 App Router API route format (export async function POST), properly type request and response, return NextResponse objects, handle CORS if needed | Success: API route structure created, request/response properly typed, follows Next.js 15 conventions, basic handler responds successfully_
 
-- [ ] 4.1.2 リクエストバリデーションの実装
+- [-] 4.1.2 リクエストバリデーションの実装
   - ファイル: src/app/api/scrape/route.ts（継続）
   - リクエストボディの検証
   - エラーレスポンスの実装
@@ -254,7 +254,7 @@
   - _要件: 要件1（バリデーション）, 要件5（エラー表示）_
   - _プロンプト: Role: API Developer with expertise in input validation and error handling | Task: Implement request validation in POST handler using validation.ts functions, returning 400 Bad Request with ErrorResponse for invalid inputs (empty dates, invalid time range) | Restrictions: Must validate all inputs before processing, use existing validation utilities, return proper HTTP status codes (400 for validation, 429 for rate limit), provide user-friendly Japanese error messages | Success: All invalid requests properly rejected, validation errors return 400 with clear messages, uses existing validation utilities, error responses match ErrorResponse type_
 
-- [ ] 4.1.3 レート制限の統合
+- [-] 4.1.3 レート制限の統合
   - ファイル: src/app/api/scrape/route.ts（継続）
   - RateLimiterの統合
   - 429エラーレスポンスの実装
@@ -263,7 +263,7 @@
   - _要件: 要件3（スクレイピング）_
   - _プロンプト: Role: API Developer with expertise in rate limiting and API security | Task: Integrate rateLimiter.checkRateLimit() in POST handler before scraping, catching rate limit errors and returning 429 Too Many Requests with ErrorResponse and retryable: true | Restrictions: Must call checkRateLimit before scraping, always call releaseRequest in finally block, return 429 status code for rate limit errors, provide Japanese error message | Success: Rate limiting integrated correctly, 429 returned when limit exceeded, request always released in finally, proper error response structure_
 
-- [ ] 4.1.4 スクレイピング実行の統合
+- [-] 4.1.4 スクレイピング実行の統合
   - ファイル: src/app/api/scrape/route.ts（継続）
   - FacilityScraper.scrapeFacilities の呼び出し
   - レスポンスの返却
@@ -272,7 +272,7 @@
   - _要件: 要件3（スクレイピング）_
   - _プロンプト: Role: API Developer with expertise in async operations and data transformation | Task: Integrate FacilityScraper.scrapeFacilities() in POST handler, transforming dates from ISO 8601 strings to Date objects, handling scraping errors, and returning ScrapeResponse with 200 status | Restrictions: Must parse ISO dates correctly, handle all scraping errors gracefully, return 500 for scraping errors with retryable flag, ensure proper async/await usage, always release rate limiter | Success: Scraping integrated successfully, date parsing works correctly, errors handled appropriately, proper response structure, rate limiter always released_
 
-- [ ] 4.1.5 エラーハンドリングの完成
+- [-] 4.1.5 エラーハンドリングの完成
   - ファイル: src/app/api/scrape/route.ts（継続）
   - 包括的なtry-catchブロック
   - エラータイプ別のレスポンス
@@ -285,7 +285,7 @@
 
 ### 5.1 基本UIコンポーネント
 
-- [ ] 5.1.1 LoadingSpinnerコンポーネントの作成
+- [-] 5.1.1 LoadingSpinnerコンポーネントの作成
   - ファイル: src/components/ui/LoadingSpinner.tsx
   - アニメーション付きスピナー
   - 進行状況メッセージ表示
@@ -294,7 +294,7 @@
   - _要件: 要件4（ローディング状態）_
   - _プロンプト: Role: Frontend Developer with expertise in React components and CSS animations | Task: Create LoadingSpinner component with animated spinner (TailwindCSS animate-spin) and optional message prop, optimized for mobile viewing | Restrictions: Must be a client component ('use client'), use TailwindCSS for styling, ensure animation is smooth (60fps), support optional message string, maintain accessibility (aria-label) | Success: Component renders spinner correctly, animation is smooth, message displays properly, accessible, mobile-optimized_
 
-- [ ] 5.1.2 ErrorMessageコンポーネントの作成
+- [-] 5.1.2 ErrorMessageコンポーネントの作成
   - ファイル: src/components/ui/ErrorMessage.tsx
   - エラータイプ別メッセージ表示
   - 再試行ボタン
@@ -304,7 +304,7 @@
 
 ### 5.2 フォームコンポーネント
 
-- [ ] 5.2.1 DatePickerコンポーネントの作成
+- [-] 5.2.1 DatePickerコンポーネントの作成
   - ファイル: src/components/ui/DatePicker.tsx
   - カレンダーグリッドUI
   - 複数日選択機能
@@ -313,7 +313,7 @@
   - _要件: 要件1（複数日選択）_
   - _プロンプト: Role: Frontend Developer with expertise in calendar UIs and touch interactions | Task: Create DatePicker component with calendar grid layout using TailwindCSS, supporting multiple date selection with visual highlighting, using date-fns for date calculations, optimized for mobile touch | Restrictions: Must be a client component, use date-fns for date math, implement minDate prop to restrict past dates, use TailwindCSS grid for layout, ensure tap targets are 44px+, show clear selection state | Success: Calendar displays correctly, multiple dates selectable, selection visually clear, touch-optimized, respects minDate, uses date-fns_
 
-- [ ] 5.2.2 QuickDateSelectコンポーネントの作成
+- [-] 5.2.2 QuickDateSelectコンポーネントの作成
   - ファイル: src/components/ui/QuickDateSelect.tsx
   - 「本日から1週間」ボタン
   - 日付配列の自動生成
@@ -322,7 +322,7 @@
   - _要件: 要件1（クイック日付選択）_
   - _プロンプト: Role: Frontend Developer with expertise in React hooks and date utilities | Task: Create QuickDateSelect component with "本日から1週間" button that generates 7-day Date array using date.ts generateDateRange utility and calls onQuickSelect callback | Restrictions: Must be a client component, use existing generateDateRange utility, style button with 44px+ tap target, use clear Japanese label, integrate with parent form state | Success: Button renders correctly, generates 7-day array on click, callback fires with correct dates, meets tap target size, integrates smoothly_
 
-- [ ] 5.2.3 TimePickerコンポーネントの作成
+- [-] 5.2.3 TimePickerコンポーネントの作成
   - ファイル: src/components/ui/TimePicker.tsx
   - From-To時刻選択ドロップダウン
   - バリデーション（Toは Fromより後）
@@ -331,7 +331,7 @@
   - _要件: 要件1（時間帯指定）_
   - _プロンプト: Role: Frontend Developer with expertise in form inputs and validation | Task: Create TimePicker component with From/To dropdowns (8:30 to 21:30 in 30-min increments), validating To > From, supporting undefined (全時間帯), optimized for mobile touch | Restrictions: Must be a client component, generate time options dynamically (8:30-21:30, 30min steps), validate To is after From, style dropdowns for mobile (large tap target), allow clearing (全時間帯), use controlled component pattern | Success: Dropdowns display correctly, validation works (To > From), supports undefined state, mobile-optimized, validation feedback clear_
 
-- [ ] 5.2.4 SearchFormコンポーネントの作成
+- [-] 5.2.4 SearchFormコンポーネントの作成
   - ファイル: src/components/SearchForm.tsx
   - フォームレイアウトの構築
   - DatePicker, TimePicker, QuickDateSelectの統合
@@ -343,7 +343,7 @@
 
 ### 5.3 結果表示コンポーネント
 
-- [ ] 5.3.1 AvailabilityListコンポーネントの作成
+- [-] 5.3.1 AvailabilityListコンポーネントの作成
   - ファイル: src/components/AvailabilityList.tsx
   - 時間帯リスト表示
   - 空き/空いていないの視覚的区別
@@ -352,7 +352,7 @@
   - _要件: 要件2（時間帯の展開/折りたたみ）_
   - _プロンプト: Role: Frontend Developer with expertise in list rendering and interactive UI | Task: Create AvailabilityList component displaying TimeSlot[] with visual distinction (green for available, gray for unavailable), toggle button to show all slots or available only, optimized for mobile scrolling | Restrictions: Must be a client component, use TailwindCSS for color coding (green=空き, gray=空いていない), implement showAll toggle state, render efficiently for long lists, use semantic HTML, 44px+ tap target for toggle | Success: List renders time slots correctly, color coding clear, toggle works smoothly, mobile-optimized scrolling, accessible, efficient rendering_
 
-- [ ] 5.3.2 FacilityCardコンポーネントの作成
+- [-] 5.3.2 FacilityCardコンポーネントの作成
   - ファイル: src/components/FacilityCard.tsx
   - 施設名表示
   - 日付ごとの空き状況セクション
