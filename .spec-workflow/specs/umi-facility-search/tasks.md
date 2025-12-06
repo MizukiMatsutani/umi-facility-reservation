@@ -189,7 +189,7 @@
 
 ### 3.4 FacilityScraperクラスの実装
 
-- [ ] 3.4.1 FacilityScraperクラスの基本構造作成
+- [x] 3.4.1 FacilityScraperクラスの基本構造作成
   - ファイル: src/lib/scraper/index.ts
   - FacilityScraperクラスの骨格作成
   - Puppeteerブラウザの初期化メソッド
@@ -198,7 +198,7 @@
   - _要件: 要件3（スクレイピング）_
   - _プロンプト: Role: Web Scraping Engineer with expertise in Puppeteer and browser automation | Task: Create FacilityScraper class structure with initBrowser and closeBrowser methods using Puppeteer, configuring headless mode and sandbox settings for Vercel deployment | Restrictions: Must use singleton browser pattern, configure for serverless environment (--no-sandbox, --disable-setuid-sandbox), implement proper cleanup, handle browser lifecycle errors | Success: Class structure created, browser initialization works, proper cleanup on close, configured for Vercel serverless_
 
-- [ ] 3.4.2 ページナビゲーションメソッドの実装
+- [x] 3.4.2 ページナビゲーションメソッドの実装
   - ファイル: src/lib/scraper/index.ts（継続）
   - navigateToSearchPage メソッド実装
   - selectSports メソッド実装
@@ -206,7 +206,7 @@
   - _要件: 要件3（スクレイピング）_
   - _プロンプト: Role: Browser Automation Developer with expertise in Puppeteer navigation and form interaction | Task: Implement navigateToSearchPage (navigate to 宇美町システム) and selectSports (select basketball/mini-basketball) methods with 10-second timeout and networkidle0 wait strategy | Restrictions: Must set appropriate User-Agent header (Mozilla/5.0 compatible; UmiFacilitySearch/1.0), handle navigation errors, use 10-second timeout, wait for page stability | Success: Navigation methods work reliably, proper timeout handling, User-Agent set correctly, handles common navigation errors_
 
-- [ ] 3.4.3 施設選択メソッドの実装
+- [x] 3.4.3 施設選択メソッドの実装
   - ファイル: src/lib/scraper/index.ts（継続）
   - selectAllFacilities メソッド実装
   - 目的: 施設一覧の取得とデータ変換
@@ -214,7 +214,7 @@
   - _要件: 要件3（スクレイピング）_
   - _プロンプト: Role: Web Scraping Developer with expertise in data extraction and page interaction | Task: Implement selectAllFacilities method that extracts facility list HTML and uses parseFacilities to return Facility[], handling element selection and parsing errors | Restrictions: Must use existing parser.ts functions, verify elements exist before parsing, handle empty facility lists, throw descriptive errors if structure changed | Success: Method successfully extracts facilities, integrates with parser correctly, handles errors gracefully, returns typed Facility array_
 
-- [ ] 3.4.4 空き状況スクレイピングメソッドの実装
+- [x] 3.4.4 空き状況スクレイピングメソッドの実装
   - ファイル: src/lib/scraper/index.ts（継続）
   - scrapeAvailability メソッド実装
   - 日付ループと時間範囲フィルタリングの統合
@@ -223,7 +223,7 @@
   - _要件: 要件1（時間帯指定）, 要件3（スクレイピング）_
   - _プロンプト: Role: Web Scraping Developer with expertise in complex data extraction workflows | Task: Implement scrapeAvailability method that loops through dates, extracts availability HTML, parses with parseAvailability, and filters with filterTimeSlots based on optional TimeRange | Restrictions: Must handle multi-date scraping, integrate time filtering correctly, handle missing data gracefully, maintain scraping efficiency, respect rate limiting | Success: Method extracts availability for all dates, time filtering works correctly, integrates parser and filter functions, handles errors properly_
 
-- [ ] 3.4.5 メインスクレイピングメソッドの実装
+- [x] 3.4.5 メインスクレイピングメソッドの実装
   - ファイル: src/lib/scraper/index.ts（継続）
   - scrapeFacilities メソッド実装（オーケストレーション）
   - エラーハンドリングとクリーンアップの統合
