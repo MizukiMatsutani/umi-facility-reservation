@@ -5,9 +5,11 @@ import DatePicker from './ui/DatePicker';
 import QuickDateSelect from './ui/QuickDateSelect';
 import { SearchParams } from '@/lib/types';
 import { validateSearchParams } from '@/lib/utils/validation';
+import { Calendar, RefreshCw, Search } from 'lucide-react';
 
 interface SearchFormProps {
   onSubmit: (params: SearchParams) => void;
+  onValidationError?: (error: string) => void;
   isLoading?: boolean;
   initialDates?: Date[];
 }
@@ -18,36 +20,32 @@ interface SearchFormProps {
  */
 export default function SearchForm({
   onSubmit,
+  onValidationError,
   isLoading = false,
   initialDates = [],
 }: SearchFormProps) {
   const [selectedDates, setSelectedDates] = useState<Date[]>(initialDates);
-  const [validationError, setValidationError] = useState<string>('');
   const [resetKey, setResetKey] = useState<number>(0); // リセット用のキー
 
   // クイック選択ハンドラ
   const handleQuickSelect = (dates: Date[]) => {
     setSelectedDates(dates);
-    setValidationError('');
   };
 
   // 日付選択ハンドラ
   const handleDateSelect = (dates: Date[]) => {
     setSelectedDates(dates);
-    setValidationError('');
   };
 
   // リセットハンドラ
   const handleReset = () => {
     setSelectedDates([]);
-    setValidationError('');
     setResetKey(prev => prev + 1); // キーを変更してコンポーネントを再マウント
   };
 
   // フォーム送信ハンドラ
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setValidationError('');
 
     try {
       // バリデーション実行
@@ -61,11 +59,11 @@ export default function SearchForm({
       // コールバック実行
       onSubmit(params);
     } catch (error) {
-      // バリデーションエラーを表示
+      // バリデーションエラーをコールバック
       if (error instanceof Error) {
-        setValidationError(error.message);
+        onValidationError?.(error.message);
       } else {
-        setValidationError('入力内容に誤りがあります');
+        onValidationError?.('入力内容に誤りがあります');
       }
     }
   };
@@ -73,13 +71,22 @@ export default function SearchForm({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       {/* クイック日付選択 */}
-      <QuickDateSelect onQuickSelect={handleQuickSelect} />
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Calendar className="h-5 w-5 text-blue-600" />
+          <h3 className="text-sm font-semibold text-gray-900">クイック選択</h3>
+        </div>
+        <QuickDateSelect onQuickSelect={handleQuickSelect} />
+      </div>
 
       {/* 日付選択 */}
-      <div className="flex flex-col gap-2">
-        <label className="text-sm font-medium text-gray-700">
-          検索する日付を選択
-        </label>
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <Calendar className="h-5 w-5 text-blue-600" />
+          <label className="text-sm font-semibold text-gray-900">
+            検索する日付を選択
+          </label>
+        </div>
         <DatePicker
           key={`date-picker-${resetKey}`}
           selectedDates={selectedDates}
@@ -88,13 +95,19 @@ export default function SearchForm({
         />
       </div>
 
-      {/* バリデーションエラー表示 */}
-      {validationError && (
-        <div
-          className="rounded-md border border-red-300 bg-red-50 p-4 text-sm text-red-800"
-          role="alert"
-        >
-          {validationError}
+      {/* 選択状態の表示 */}
+      {selectedDates.length > 0 && (
+        <div className="rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 p-4 border border-blue-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600">
+                <span className="text-sm font-bold text-white">{selectedDates.length}</span>
+              </div>
+              <span className="text-sm font-medium text-gray-900">
+                日付を選択中
+              </span>
+            </div>
+          </div>
         </div>
       )}
 
@@ -102,29 +115,61 @@ export default function SearchForm({
       <div className="flex flex-col gap-3 sm:flex-row">
         <button
           type="submit"
-          disabled={isLoading}
-          className="flex-1 min-h-[44px] rounded-md bg-blue-600 px-6 py-3 text-base font-medium text-white hover:bg-blue-700 active:bg-blue-800 disabled:cursor-not-allowed disabled:bg-gray-400"
+          disabled={isLoading || selectedDates.length === 0}
+          className="
+            group relative flex-1 overflow-hidden rounded-lg
+            bg-gradient-to-r from-blue-600 to-indigo-600
+            px-6 py-3.5 text-base font-semibold text-white
+            shadow-lg shadow-blue-500/30
+            transition-all duration-300 ease-out
+            hover:shadow-xl hover:shadow-blue-500/40
+            hover:scale-[1.02]
+            active:scale-[0.98]
+            disabled:cursor-not-allowed disabled:opacity-50
+            disabled:hover:scale-100 disabled:hover:shadow-lg
+          "
           aria-label="施設を検索"
         >
-          {isLoading ? '検索中...' : '検索'}
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-700 to-indigo-700 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+          <div className="relative flex items-center justify-center gap-2">
+            {isLoading ? (
+              <>
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                <span>検索中...</span>
+              </>
+            ) : (
+              <>
+                <Search className="h-5 w-5" />
+                <span>検索</span>
+              </>
+            )}
+          </div>
         </button>
         <button
           type="button"
           onClick={handleReset}
           disabled={isLoading}
-          className="flex-1 min-h-[44px] rounded-md bg-gray-200 px-6 py-3 text-base font-medium text-gray-700 hover:bg-gray-300 active:bg-gray-400 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 sm:flex-initial sm:px-8"
+          className="
+            group relative flex-shrink-0 overflow-hidden rounded-lg
+            bg-white border-2 border-gray-300
+            px-6 py-3.5 text-base font-semibold text-gray-700
+            shadow-sm
+            transition-all duration-300 ease-out
+            hover:border-gray-400 hover:shadow-md
+            hover:scale-[1.02]
+            active:scale-[0.98]
+            disabled:cursor-not-allowed disabled:opacity-50
+            disabled:hover:scale-100
+            sm:flex-initial sm:px-8
+          "
           aria-label="選択をリセット"
         >
-          リセット
+          <div className="flex items-center justify-center gap-2">
+            <RefreshCw className="h-5 w-5 transition-transform duration-300 group-hover:rotate-180" />
+            <span>リセット</span>
+          </div>
         </button>
       </div>
-
-      {/* 選択状態の表示 */}
-      {selectedDates.length > 0 && (
-        <div className="text-sm text-gray-600">
-          <p>選択中: {selectedDates.length}日</p>
-        </div>
-      )}
     </form>
   );
 }
