@@ -37,7 +37,7 @@ export class FacilityScraper {
     timeRange?: TimeRange
   ): Promise<FacilityAvailability[]> {
     try {
-      console.log('🚀 スクレイピング開始: 4ステップフロー');
+      console.log('🚀 スクレイピング開始: 日付ごとの繰り返しフロー');
       console.log(`📅 対象日数: ${dates.length}日`);
       if (timeRange) {
         console.log(`⏰ 時間範囲: ${timeRange.from} - ${timeRange.to}`);
@@ -67,19 +67,51 @@ export class FacilityScraper {
       await this.selectAllFacilitiesAndNavigate(page);
 
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      // Step 3: 日付を選択して時間帯別空き状況ページへ遷移
+      // 日付ごとにループして処理（施設×日付が10個までの制限対応）
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      console.log('\n📍 Step 3: 日付を選択');
-      await this.selectDatesOnFacilityCalendar(page, dates);
+      const allResults: FacilityAvailability[] = [];
+
+      for (let i = 0; i < dates.length; i++) {
+        const currentDate = dates[i];
+        console.log(`\n📍 [${i + 1}/${dates.length}] ${format(currentDate, 'yyyy-MM-dd')} の処理開始`);
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // Step 3: 日付を選択して時間帯別空き状況ページへ遷移
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        console.log('📍 Step 3: 日付を選択');
+        await this.selectDatesOnFacilityCalendar(page, [currentDate]);
+
+        // 日付がスキップされた場合（選択可能な施設がない）、次の日付へ
+        const currentUrl = page.url();
+        if (!currentUrl.includes('WgR_JikantaibetsuAkiJoukyou')) {
+          console.log('⏭️  この日付はスキップされました。次の日付へ進みます');
+          continue;
+        }
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // Step 4: 時間帯別空き状況データを一括取得
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        console.log('📍 Step 4: 時間帯別空き状況を取得');
+        const results = await this.scrapeTimeSlots(page, [currentDate]);
+
+        // 結果を蓄積
+        allResults.push(...results);
+
+        // 最後の日付でなければ、施設別空き状況ページに戻る
+        if (i < dates.length - 1) {
+          console.log('📍 施設別空き状況ページに戻る');
+          await this.goBackToFacilityCalendar(page);
+        }
+      }
 
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      // Step 4: 時間帯別空き状況データを一括取得
+      // 同じ施設の複数日のデータをマージ
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      console.log('\n📍 Step 4: 時間帯別空き状況を取得');
-      const results = await this.scrapeTimeSlots(page, dates);
+      console.log('\n📍 複数日のデータをマージ中...');
+      const mergedResults = this.mergeFacilityData(allResults);
 
-      console.log(`\n✅ スクレイピング完了: ${results.length}施設`);
-      return results;
+      console.log(`\n✅ スクレイピング完了: ${mergedResults.length}施設`);
+      return mergedResults;
     } catch (error) {
       if (error instanceof Error) {
         console.error('❌ スクレイピングエラー:', error.message);
@@ -510,6 +542,33 @@ export class FacilityScraper {
       const targetDateStrings = dates.map((date) => format(date, 'yyyyMMdd'));
       console.log('🎯 選択対象の日付:', targetDateStrings);
 
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // 既存の選択をクリア（戻るボタンで戻った場合に前回の選択が残っているため）
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      console.log('📍 既存の日付選択をクリア中...');
+      await page.evaluate(() => {
+        const checkboxes = Array.from(
+          document.querySelectorAll('input[type="checkbox"][name="checkdate"]')
+        ) as HTMLInputElement[];
+
+        checkboxes.forEach((checkbox) => {
+          // チェックボックスがチェックされている場合、labelをクリックして解除
+          if (checkbox.checked) {
+            const label = document.querySelector(
+              `label[for="${checkbox.id}"]`
+            ) as HTMLElement;
+            if (label) {
+              label.click();
+            }
+          }
+        });
+      });
+
+      // DOM更新を待機
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      console.log('✅ 既存の選択をクリア完了');
+
       // デバッグ: 利用可能な日付チェックボックスを確認
       const availableDates = await page.evaluate(() => {
         const checkboxes = Array.from(
@@ -520,16 +579,17 @@ export class FacilityScraper {
           const checkboxDate = checkbox.value.substring(0, 8);
           const label = document.querySelector(`label[for="${checkbox.id}"]`);
           const status = label?.textContent?.trim() || '';
-          
+
           return {
             date: checkboxDate,
             status: status,
             value: checkbox.value,
             id: checkbox.id,
+            checked: checkbox.checked,
           };
         });
       });
-      
+
       console.log('📅 利用可能な日付チェックボックス:', JSON.stringify(availableDates, null, 2));
 
       // 日付を選択（全施設×日付の組み合わせを選択）
@@ -554,12 +614,16 @@ export class FacilityScraper {
             if (label) {
               const status = label.textContent?.trim();
 
-              // ○（空きあり）または△（一部空き）のみ選択
-              // ×（空きなし）、－（対象外）、休（休館日）は選択しない
-              if (status === '○' || status === '△') {
-                label.click();
-                count++;
-                selectedDates.push(checkboxDate);
+              // ○（空きあり）、△（一部空き）、－（当日など）を選択
+              // ×（空きなし）、休（休館日）は選択しない
+              // 注: －は当日の場合に表示されるが、選択可能で空き状況が見られる
+              if (status === '○' || status === '△' || status === '－') {
+                // チェックボックスが選択されていない場合のみクリック
+                if (!checkbox.checked) {
+                  label.click();
+                  count++;
+                  selectedDates.push(checkboxDate);
+                }
               }
             }
           }
@@ -572,7 +636,9 @@ export class FacilityScraper {
       console.log(`✅ ${result.count}個のチェックボックスを選択しました`);
 
       if (result.count === 0) {
-        throw new Error('選択可能な日付がありません（全て×、－、または休の可能性があります）');
+        console.log('⚠️  この日付は選択可能な施設がありません（全て×、－、または休の可能性があります）');
+        console.log('⏭️  この日付をスキップして次の日付へ進みます');
+        return; // この日付はスキップして次へ
       }
 
       // DOM更新を待機
@@ -599,6 +665,86 @@ export class FacilityScraper {
       }
       throw new Error('日付選択とナビゲーションに失敗しました');
     }
+  }
+
+  /**
+   * 時間帯別空き状況ページから施設別空き状況ページに戻る
+   *
+   * Step 4 → Step 3 への戻る操作を実行します。
+   *
+   * @param page Puppeteerページオブジェクト
+   * @throws {Error} 戻る操作に失敗した場合
+   *
+   * @design
+   * - 時間帯別空き状況ページの「前に戻る」ボタン（.navbar .prev a）をクリック
+   * - 施設別空き状況ページ（WgR_ShisetsubetsuAkiJoukyou）への遷移を待機
+   * - URLを検証して正しいページに戻ったことを確認
+   *
+   * @note
+   * ブラウザバックは使用せず、ページ内の「前に戻る」ボタンを使用します。
+   * これにより、セッション状態が保持され、次の日付選択が可能になります。
+   */
+  async goBackToFacilityCalendar(page: Page): Promise<void> {
+    try {
+      console.log('📍 時間帯別空き状況ページから施設別空き状況ページへ戻る...');
+
+      // 「前に戻る」ボタンをクリック
+      await Promise.all([
+        page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 10000 }),
+        page.click('.navbar .prev > a'),
+      ]);
+
+      // URLの確認
+      const currentUrl = page.url();
+      if (!currentUrl.includes('WgR_ShisetsubetsuAkiJoukyou')) {
+        throw new Error(`予期しないページに遷移しました: ${currentUrl}`);
+      }
+
+      console.log('✅ 施設別空き状況ページへ戻りました');
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`施設別空き状況ページへの戻る操作に失敗しました: ${error.message}`);
+      }
+      throw new Error('施設別空き状況ページへの戻る操作に失敗しました');
+    }
+  }
+
+  /**
+   * 複数日のスクレイピング結果をマージ
+   *
+   * 日付ごとに取得した同じ施設のデータを1つにまとめます。
+   *
+   * @param results 日付ごとのスクレイピング結果
+   * @returns マージされた施設ごとの空き状況データ
+   *
+   * @design
+   * - 施設名をキーにして同じ施設のデータをグループ化
+   * - 各施設の availability 配列に全日付のデータを結合
+   * - 日付順にソート
+   */
+  private mergeFacilityData(results: FacilityAvailability[]): FacilityAvailability[] {
+    const facilityMap = new Map<string, FacilityAvailability>();
+
+    results.forEach((result) => {
+      const facilityName = result.facility.name;
+
+      if (!facilityMap.has(facilityName)) {
+        // 初めて見る施設の場合、そのまま追加
+        facilityMap.set(facilityName, result);
+      } else {
+        // 既に存在する施設の場合、availability を結合
+        const existing = facilityMap.get(facilityName)!;
+        existing.availability.push(...result.availability);
+      }
+    });
+
+    // 各施設の availability を日付順にソート
+    const mergedResults = Array.from(facilityMap.values());
+    mergedResults.forEach((result) => {
+      result.availability.sort((a, b) => a.date.getTime() - b.date.getTime());
+    });
+
+    return mergedResults;
   }
 
   /**

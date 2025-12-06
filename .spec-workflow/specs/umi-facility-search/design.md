@@ -4,6 +4,7 @@
 
 | 日付 | バージョン | 変更内容 |
 |------|-----------|---------|
+| 2025-12-07 | 2.3 | 複数日選択時の日付ごとループ処理、「－」選択対応、戻るボタン処理を追加 |
 | 2025-12-07 | 2.2 | UI改善と検索制限の追加：7日間制限、表示期間1ヶ月設定、連続空き時間サマリ |
 | 2025-12-07 | 2.1 | タイムゾーン制約の追加、Step 4ページ構造の詳細化 |
 | 2025-12-06 | 2.0 | Phase 2実装完了に伴う4ステップフローの反映 |
@@ -1310,8 +1311,8 @@ value="2025121100701   0"
 **空き状況ラベル:**
 - `○`: 空きあり → 選択する
 - `△`: 一部空き → 選択する
+- `－`: 当日など → **選択する**（当日の場合に表示されるが、選択可能で空き状況が見られる）
 - `×`: 空きなし → 選択しない
-- `－`: 対象外 → 選択しない
 - `休`: 休館日 → disabled（選択不可）
 
 #### Step 4: 時間帯別空き状況ページ
@@ -1393,9 +1394,47 @@ label.click();
 
 **理由**: チェックボックスのイベントハンドラーが `.checked` プロパティを強制的に `false` に戻すため
 
-#### 2. 日付選択ロジック
+#### 2. 日付選択ロジック（日付ごとループ処理対応）
+
+**重要**: 施設 × 日付の組み合わせが10個までの制限があるため、日付ごとにループして処理します。
 
 ```typescript
+// 全体フロー: 日付ごとにループ
+for (let i = 0; i < dates.length; i++) {
+  const currentDate = dates[i];
+
+  // 1. 既存の選択をクリア（戻るボタンで戻った場合に前回の選択が残っているため）
+  await page.evaluate(() => {
+    const checkboxes = Array.from(
+      document.querySelectorAll('input[type="checkbox"][name="checkdate"]')
+    ) as HTMLInputElement[];
+
+    checkboxes.forEach((checkbox) => {
+      if (checkbox.checked) {
+        const label = document.querySelector(
+          `label[for="${checkbox.id}"]`
+        ) as HTMLElement;
+        if (label) {
+          label.click();
+        }
+      }
+    });
+  });
+
+  // 2. 日付を選択
+  await selectDatesOnFacilityCalendar(page, [currentDate]);
+
+  // 3. データ取得
+  const results = await scrapeTimeSlots(page, [currentDate]);
+  allResults.push(...results);
+
+  // 4. 最後以外は戻るボタンで施設別空き状況ページへ戻る
+  if (i < dates.length - 1) {
+    await goBackToFacilityCalendar(page);
+  }
+}
+
+// 日付選択メソッド
 private async selectDatesOnFacilityCalendar(page: Page, dates: Date[]): Promise<void> {
   // YYYYMMDD形式に変換
   const dateStrings = dates.map(date => format(date, 'yyyyMMdd'));
@@ -1411,21 +1450,50 @@ private async selectDatesOnFacilityCalendar(page: Page, dates: Date[]): Promise<
         const label = document.querySelector(`label[for="${checkbox.id}"]`);
         const status = label?.textContent?.trim();
 
-        // ○または△のみ選択
-        if (status === '○' || status === '△') {
-          label.click();
+        // ○、△、－を選択（空きあり、一部空き、当日など）
+        // 注: －は当日の場合に表示されるが、選択可能で空き状況が見られる
+        if (status === '○' || status === '△' || status === '－') {
+          // チェックボックスが選択されていない場合のみクリック
+          if (!checkbox.checked) {
+            label.click();
+          }
         }
       }
     });
   }, dateStrings);
 }
+
+// 戻るボタンで施設別空き状況ページへ戻る
+private async goBackToFacilityCalendar(page: Page): Promise<void> {
+  // ページ内の「前に戻る」ボタンをクリック（ブラウザバックではない）
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 10000 }),
+    page.click('.navbar .prev > a'),
+  ]);
+
+  // 施設別空き状況ページ (WgR_ShisetsubetsuAkiJoukyou) に戻ったことを確認
+  const currentUrl = page.url();
+  if (!currentUrl.includes('WgR_ShisetsubetsuAkiJoukyou')) {
+    throw new Error(`予期しないページに遷移しました: ${currentUrl}`);
+  }
+}
 ```
 
 #### 3. 制約事項
 
-- **最大10日まで選択可能** (システム制約)
+- **施設 × 日付の組み合わせが10個まで** (システム制約)
+  - 施設が10個ある場合、1回につき1日分しか選択できない
+  - 複数日を取得する場合は、日付ごとにループして処理する必要がある
+- **最大7日まで選択可能** (本システムの制限)
+  - スクレイピング対象システムは最大10日まで選択可能
+  - 本システムでは7日間に制限し、システムへの負荷を軽減
 - **施設は全選択が前提** (個別選択は今後の改善案)
-- **ページ遷移は順序固定** (戻る操作は不要)
+- **戻るボタンはページ内ボタンを使用**
+  - ブラウザバック（`page.goBack()`）ではエラーになる
+  - 必ずページ内の「前に戻る」ボタン（`.navbar .prev > a`）を使用すること
+- **既存の選択をクリアする必要がある**
+  - 戻るボタンで施設別空き状況ページに戻った際、前回の日付選択が残っている
+  - 新しい日付を選択する前に、必ず既存の選択をクリアすること
 
 #### 4. 日付のタイムゾーン問題に注意 ⚠️
 
