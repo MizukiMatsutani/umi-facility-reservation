@@ -2,30 +2,26 @@
 
 import { useState } from 'react';
 import DatePicker from './ui/DatePicker';
-import TimePicker from './ui/TimePicker';
 import QuickDateSelect from './ui/QuickDateSelect';
-import { SearchParams, TimeRange } from '@/lib/types';
-import { validateSearchParams, validateTimeRange } from '@/lib/utils/validation';
+import { SearchParams } from '@/lib/types';
+import { validateSearchParams } from '@/lib/utils/validation';
 
 interface SearchFormProps {
   onSubmit: (params: SearchParams) => void;
   isLoading?: boolean;
   initialDates?: Date[];
-  initialTimeRange?: TimeRange;
 }
 
 /**
  * 検索フォームコンポーネント
- * DatePicker、TimePicker、QuickDateSelectを統合し、検索パラメータのバリデーションと送信を行います
+ * DatePicker、QuickDateSelectを統合し、検索パラメータのバリデーションと送信を行います
  */
 export default function SearchForm({
   onSubmit,
   isLoading = false,
   initialDates = [],
-  initialTimeRange = undefined,
 }: SearchFormProps) {
   const [selectedDates, setSelectedDates] = useState<Date[]>(initialDates);
-  const [timeRange, setTimeRange] = useState<TimeRange | undefined>(initialTimeRange);
   const [validationError, setValidationError] = useState<string>('');
   const [resetKey, setResetKey] = useState<number>(0); // リセット用のキー
 
@@ -41,16 +37,9 @@ export default function SearchForm({
     setValidationError('');
   };
 
-  // 時間範囲変更ハンドラ
-  const handleTimeRangeChange = (range: TimeRange | undefined) => {
-    setTimeRange(range);
-    setValidationError('');
-  };
-
   // リセットハンドラ
   const handleReset = () => {
     setSelectedDates([]);
-    setTimeRange(undefined);
     setValidationError('');
     setResetKey(prev => prev + 1); // キーを変更してコンポーネントを再マウント
   };
@@ -63,12 +52,10 @@ export default function SearchForm({
     try {
       // バリデーション実行
       validateSearchParams(selectedDates);
-      validateTimeRange(timeRange);
 
       // 検索パラメータ構築
       const params: SearchParams = {
         dates: selectedDates,
-        timeRange,
       };
 
       // コールバック実行
@@ -100,13 +87,6 @@ export default function SearchForm({
           minDate={new Date()}
         />
       </div>
-
-      {/* 時間範囲選択 */}
-      <TimePicker
-        key={`time-picker-${resetKey}`}
-        value={timeRange}
-        onChange={handleTimeRangeChange}
-      />
 
       {/* バリデーションエラー表示 */}
       {validationError && (
@@ -142,10 +122,7 @@ export default function SearchForm({
       {/* 選択状態の表示 */}
       {selectedDates.length > 0 && (
         <div className="text-sm text-gray-600">
-          <p>
-            選択中: {selectedDates.length}日
-            {timeRange && ` / ${timeRange.from} 〜 ${timeRange.to}`}
-          </p>
+          <p>選択中: {selectedDates.length}日</p>
         </div>
       )}
     </form>

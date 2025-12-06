@@ -121,7 +121,7 @@ graph TD
 
 ### 1. SearchForm コンポーネント
 
-**目的**: 日付と時間帯を選択して検索を実行するフォーム
+**目的**: 日付を選択して検索を実行するフォーム
 
 **ファイル**: `src/components/SearchForm.tsx`
 
@@ -130,34 +130,24 @@ graph TD
 interface SearchFormProps {
   onSubmit: (params: SearchParams) => void;
   isLoading?: boolean;
-  initialDates?: Date[];      // NEW: エラー時の入力状態保持用
-  initialTimeRange?: TimeRange;  // NEW: エラー時の入力状態保持用
+  initialDates?: Date[];      // エラー時の入力状態保持用
 }
 
 interface SearchParams {
   dates: Date[];           // 選択された日付の配列
-  timeRange?: TimeRange;   // オプションの時間範囲
-}
-
-interface TimeRange {
-  from: string;  // 開始時刻（例: "9:00"）
-  to: string;    // 終了時刻（例: "12:00"）
 }
 ```
 
 **State:**
 ```typescript
 const [selectedDates, setSelectedDates] = useState<Date[]>(initialDates);
-const [timeRange, setTimeRange] = useState<TimeRange | undefined>(initialTimeRange);
 const [validationError, setValidationError] = useState<string>('');
-const [resetKey, setResetKey] = useState<number>(0); // NEW: リセット用のキー
+const [resetKey, setResetKey] = useState<number>(0); // リセット用のキー
 ```
 
 **依存関係:**
 - `DatePicker` (UI component)
-- `TimePicker` (UI component)
 - `QuickDateSelect` (UI component)
-- `Button` (UI component)
 
 **再利用するもの:**
 - TailwindCSSのモバイルファーストスタイル
@@ -168,9 +158,9 @@ const [resetKey, setResetKey] = useState<number>(0); // NEW: リセット用の�
 - 「本日から1週間」クイックボタン
 - バリデーション（日付未選択エラー）
 - 検索パラメータの送信
-- **NEW: リセットボタンの表示とリセット機能**
-- **NEW: エラー時の入力状態保持（initialDates/initialTimeRange経由）**
-- **NEW: コンポーネント再マウントによる完全なリセット（resetKey使用）**
+- リセットボタンの表示とリセット機能
+- エラー時の入力状態保持（initialDates経由）
+- コンポーネント再マウントによる完全なリセット（resetKey使用）
 
 ### 2. DatePicker コンポーネント
 
@@ -218,34 +208,7 @@ interface QuickDateSelectProps {
 - 本日から7日間の配列を生成
 - ボタンクリックでコールバック実行
 
-### 4. TimePicker コンポーネント
-
-**目的**: 時間範囲選択UI（From - To）
-
-**ファイル**: `src/components/ui/TimePicker.tsx`
-
-**Props:**
-```typescript
-interface TimePickerProps {
-  selectedRange?: TimeRange;
-  onChange: (range: TimeRange | undefined) => void;
-}
-
-interface TimeRange {
-  from: string;  // 開始時刻（例: "9:00"）
-  to: string;    // 終了時刻（例: "12:00"）
-}
-```
-
-**依存関係:** なし
-
-**責任:**
-- 開始時刻（From）のドロップダウン表示（8:30, 9:00, 9:30, ...）
-- 終了時刻（To）のドロップダウン表示（8:30, 9:00, 9:30, ...）
-- バリデーション（Toは From より後の時刻であること）
-- 未選択 = 全時間帯検索
-
-### 5. LoadingSpinner コンポーネント
+### 4. LoadingSpinner コンポーネント
 
 **目的**: ローディング状態の視覚表示
 
@@ -264,7 +227,7 @@ interface LoadingSpinnerProps {
 - アニメーション付きスピナー表示
 - 進行状況メッセージ表示
 
-### 6. FacilityCard コンポーネント
+### 5. FacilityCard コンポーネント
 
 **目的**: 施設情報と空き状況を表示するカード
 
@@ -292,10 +255,18 @@ interface AvailabilityData {
   slots: TimeSlot[];
 }
 
-interface TimeSlot {
-  startTime: string;   // "08:30"
-  endTime: string;     // "09:00"
+interface CourtStatus {
+  name: string;        // コート名（"全面", "倉庫側", "壁側"など）
   available: boolean;  // true = 空き, false = 空いていない
+}
+
+type AvailabilityStatus = 'all-available' | 'partially-available' | 'unavailable';
+
+interface TimeSlot {
+  time: string;                           // 時刻（"8:30", "9:00"など）
+  available: boolean;                     // true = いずれかのコートが空き
+  status: AvailabilityStatus;             // 空き状況のステータス
+  courts: readonly CourtStatus[];         // コート別の空き状況
 }
 ```
 
@@ -313,29 +284,29 @@ interface TimeSlot {
   - 宇美町の公式サイトへのリンク（target="_blank"）
   - 外部リンクアイコンの表示
 
-### 7. AvailabilityList コンポーネント
+### 6. AvailabilityList コンポーネント
 
-**目的**: 時間帯ごとの空き状況リスト
+**目的**: ガントチャート風の空き状況表示（時間帯×コート）
 
 **ファイル**: `src/components/AvailabilityList.tsx`
 
 **Props:**
 ```typescript
 interface AvailabilityListProps {
-  slots: TimeSlot[];
-  showAll: boolean;  // true = 全時間帯, false = 空きのみ
-  onToggle: () => void;
+  slots: readonly TimeSlot[];  // 表示する時間帯のリスト
+  dateLabel?: string;          // 日付文字列（表示用）
 }
 ```
 
 **依存関係:** なし
 
 **責任:**
-- 時間帯リストの表示
-- 空き/空いていないの視覚的区別
-- 展開ボタンの表示
+- テーブル形式での空き状況表示（時間×コート）
+- 時間帯を縦軸、コート名を横軸に配置（最大3コート）
+- 色分け表示（緑=○空き、グレー=×満）
+- 凡例の表示
 
-### 8. ErrorMessage コンポーネント
+### 7. ErrorMessage コンポーネント
 
 **目的**: エラーメッセージと再試行ボタンの表示
 
@@ -355,7 +326,7 @@ interface ErrorMessageProps {
 - エラータイプに応じたメッセージ表示
 - 再試行ボタンの表示
 
-### 9. API Route: /api/scrape
+### 8. API Route: /api/scrape
 
 **目的**: スクレイピング処理を実行してデータを返す
 
@@ -364,13 +335,7 @@ interface ErrorMessageProps {
 **リクエスト:**
 ```typescript
 interface ScrapeRequest {
-  dates: string[];         // ISO 8601形式の日付配列
-  timeRange?: TimeRange;   // オプションの時間範囲
-}
-
-interface TimeRange {
-  from: string;  // 開始時刻（例: "9:00"）
-  to: string;    // 終了時刻（例: "12:00"）
+  dates: string[];         // ISO 8601形式の日付配列（YYYY-MM-DD）
 }
 ```
 
@@ -422,9 +387,18 @@ interface AvailabilityData {
 ### TimeSlot（時間帯）
 
 ```typescript
-interface TimeSlot {
-  time: string;        // 時刻（"8:30", "9:00", etc.）
+interface CourtStatus {
+  name: string;        // コート名（"全面", "倉庫側", "壁側"など）
   available: boolean;  // true = 空き, false = 空いていない
+}
+
+type AvailabilityStatus = 'all-available' | 'partially-available' | 'unavailable';
+
+interface TimeSlot {
+  time: string;                           // 時刻（"8:30", "9:00"など）
+  available: boolean;                     // true = いずれかのコートが空き
+  status: AvailabilityStatus;             // 空き状況のステータス
+  courts: readonly CourtStatus[];         // コート別の空き状況
 }
 ```
 
@@ -432,13 +406,7 @@ interface TimeSlot {
 
 ```typescript
 interface SearchParams {
-  dates: Date[];           // 検索対象日付の配列
-  timeRange?: TimeRange;   // 指定時間範囲（オプション）
-}
-
-interface TimeRange {
-  from: string;  // 開始時刻（例: "9:00"）
-  to: string;    // 終了時刻（例: "12:00"）
+  dates: Date[];  // 検索対象日付の配列
 }
 ```
 
@@ -447,13 +415,7 @@ interface TimeRange {
 ```typescript
 // POST /api/scrape リクエスト
 interface ScrapeRequest {
-  dates: string[];         // ISO 8601形式の日付配列
-  timeRange?: TimeRange;   // オプションの時間範囲
-}
-
-interface TimeRange {
-  from: string;  // 開始時刻（例: "9:00"）
-  to: string;    // 終了時刻（例: "12:00"）
+  dates: string[];  // YYYY-MM-DD形式の日付配列
 }
 
 // POST /api/scrape レスポンス
@@ -673,9 +635,17 @@ class FacilityScraper {
 
   /**
    * Step 4: 時間帯別空き状況を一括取得
+   *
+   * 重要な実装ポイント:
+   * - 各カレンダーテーブルから時間帯ヘッダーを抽出（3列目以降のth要素）
+   * - 各コート行からコート名を抽出（td.shisetsu）
+   * - 時間帯×コートのマトリックスで空き状況（○/×）を取得
+   * - CourtStatus配列を生成し、AvailabilityStatusを計算
+   * - 重複するカレンダー（同じ施設+日付）をMapでマージ
    */
-  private async scrapeTimeSlots(page: Page): Promise<FacilityAvailability[]> {
+  private async scrapeTimeSlots(page: Page, dates: Date[]): Promise<FacilityAvailability[]> {
     // 各施設のカレンダーを取得して解析
+    // コート単位の詳細な空き状況を抽出
     // 詳細は実装ファイルを参照
   }
 
@@ -820,36 +790,12 @@ class FacilityScraper {
 }
 ```
 
-**Phase 2で実装予定のメソッド:**
+**Phase 2実装完了のまとめ:**
 
-```typescript
-/**
- * 日付と施設の選択（Phase 2）
- */
-private async selectDateAndFacility(
-  page: Page,
-  facility: Facility,
-  dates: Date[]
-): Promise<void> {
-  // 施設選択
-  // 日付選択ページへ遷移
-  // 指定日付を選択
-  // 次へ進むボタンをクリック
-}
-
-/**
- * 空き状況スクレイピング（Phase 2）
- */
-private async scrapeAvailability(
-  page: Page,
-  dates: Date[],
-  timeRange?: TimeRange
-): Promise<AvailabilityData[]> {
-  // 時間帯テーブルから空き状況を抽出
-  // ◯（空き）、△（やや空き）、✕（空いていない）を判定
-  // timeRangeが指定されている場合は、from-toの範囲のみフィルタリング
-}
-```
+- ✅ 4ステップのスクレイピングフロー実装完了
+- ✅ コート単位の詳細な空き状況取得
+- ✅ 重複カレンダーのマージ処理実装
+- ✅ CourtStatus / AvailabilityStatus型の導入
 
 ### HTMLParser
 
@@ -1124,11 +1070,10 @@ requirements.mdに従い、TDDアプローチでユニットテストを実装�
        expect(() => validateSearchParams({ dates: [] })).toThrow();
      });
 
-     it('時間範囲のFromがToより後の場合はエラーを投げること', () => {
+     it('日付が正常な場合はエラーを投げないこと', () => {
        expect(() => validateSearchParams({
          dates: [new Date()],
-         timeRange: { from: '12:00', to: '9:00' }
-       })).toThrow();
+       })).not.toThrow();
      });
    });
    ```

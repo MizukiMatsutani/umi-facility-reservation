@@ -37,7 +37,6 @@ export default function Home() {
       // SearchParamsからScrapeRequestに変換（Date[] → string[]）
       const request: ScrapeRequest = {
         dates: params.dates.map((date) => format(date, 'yyyy-MM-dd')), // YYYY-MM-DD形式（ローカル時刻）
-        timeRange: params.timeRange,
       };
 
       // /api/scrapeにPOSTリクエスト送信
@@ -124,7 +123,6 @@ export default function Home() {
                   onSubmit={handleSubmit}
                   isLoading={isLoading}
                   initialDates={lastSearchParams?.dates}
-                  initialTimeRange={lastSearchParams?.timeRange}
                 />
               </div>
             </div>
@@ -140,8 +138,7 @@ export default function Home() {
           <ul className="list-inside list-disc space-y-1">
             <li>「本日から1週間」ボタンで簡単に日付を選択できます</li>
             <li>カレンダーから個別の日付を選択することもできます</li>
-            <li>時間帯を指定すると、その時間帯の空き状況のみ表示されます</li>
-            <li>時間帯を指定しない場合は、全時間帯の空き状況が表示されます</li>
+            <li>検索結果では各施設の全時間帯の空き状況が表形式で表示されます</li>
           </ul>
         </div>
       </div>

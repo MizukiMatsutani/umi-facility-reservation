@@ -19,16 +19,42 @@ export interface Facility {
 }
 
 /**
+ * コート情報
+ *
+ * 施設内の各コート（全面、倉庫側、壁側など）の情報を表します。
+ *
+ * @property {string} name - コート名（例: "全面", "倉庫側", "壁側"）
+ * @property {boolean} available - このコートが空いているか
+ */
+export interface CourtStatus {
+  readonly name: string;
+  readonly available: boolean;
+}
+
+/**
+ * 空き状況の種類
+ *
+ * - 'all-available': 全コート空き（緑色表示）
+ * - 'partially-available': 一部のコートのみ空き（黄色表示）
+ * - 'unavailable': 全コート空きなし（グレー背景）
+ */
+export type AvailabilityStatus = 'all-available' | 'partially-available' | 'unavailable';
+
+/**
  * 時間帯
  *
  * 30分単位の時間帯ごとの空き状況を表します。
  *
  * @property {string} time - 時刻（"8:30", "9:00"などの形式）
- * @property {boolean} available - true = 空き, false = 空いていない
+ * @property {boolean} available - true = 何らかのコートが空き, false = 全コート空いていない
+ * @property {AvailabilityStatus} status - 空き状況の種類
+ * @property {CourtStatus[]} courts - 各コートの空き状況
  */
 export interface TimeSlot {
   readonly time: string;
   readonly available: boolean;
+  readonly status: AvailabilityStatus;
+  readonly courts: readonly CourtStatus[];
 }
 
 /**

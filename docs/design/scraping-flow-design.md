@@ -4,6 +4,7 @@
 
 | 日付 | バージョン | 変更内容 |
 |------|-----------|---------|
+| 2025-12-07 | 2.2 | コート単位データ抽出ロジックの追加、時間帯フィルタリングの削除 |
 | 2025-12-06 | 2.1 | タイムゾーン問題とStep 4のページ構造を修正 |
 | 2025-12-06 | 2.0 | 完全な調査結果を基に全面改訂 |
 | 2025-12-06 | 1.0 | 初版作成 |
@@ -304,7 +305,7 @@ value="2025121100701   0"
    });
    ```
 
-2. **時間帯データの取得**
+2. **時間帯とコート単位のデータ取得**
    ```typescript
    // 時間帯ヘッダーを取得（"8:30～9:00"形式）
    const timeHeaders = Array.from(
@@ -314,26 +315,50 @@ value="2025121100701   0"
    // コート行を取得
    const rows = Array.from(calendar.querySelectorAll('tbody tr'));
 
-   // 各時間帯の空き状況を確認
-   const slots = timeHeaders.map((th, index) => {
+   // コート名を抽出
+   const courtNames = rows.map(row => {
+     const firstCell = row.querySelector('td.shisetsu');
+     return firstCell?.textContent?.trim() || '';
+   });
+
+   // 各時間帯のコート別空き状況を取得
+   const slots = timeHeaders.map((th, timeIndex) => {
      const timeText = th.textContent?.trim(); // "8:30～9:00"
      const time = timeText.replace('～', '-').replace(/\s/g, ''); // "8:30-9:00"
 
-     // どれか1つのコートでも○があれば空きありとする
-     let available = false;
-     for (const row of rows) {
+     // 各コートの空き状況を取得
+     const courts = rows.map((row, rowIndex) => {
        const cells = Array.from(row.querySelectorAll('td'));
-       const cell = cells[index + 2]; // 最初の2つは施設名と定員
+       const cell = cells[timeIndex + 2]; // 最初の2つは施設名と定員
        const label = cell?.querySelector('label');
        const status = label?.textContent?.trim();
 
-       if (status === '○') {
-         available = true;
-         break;
-       }
+       return {
+         name: courtNames[rowIndex],
+         available: status === '○',
+       };
+     });
+
+     // 空きのあるコート数を集計
+     const availableCourts = courts.filter(c => c.available).length;
+     const totalCourts = courts.length;
+
+     // AvailabilityStatusを計算
+     let availabilityStatus: 'all-available' | 'partially-available' | 'unavailable';
+     if (availableCourts === 0) {
+       availabilityStatus = 'unavailable';
+     } else if (availableCourts === totalCourts) {
+       availabilityStatus = 'all-available';
+     } else {
+       availabilityStatus = 'partially-available';
      }
 
-     return { time, available };
+     return {
+       time,
+       available: availableCourts > 0,
+       status: availabilityStatus,
+       courts,
+     };
    });
    ```
 
@@ -354,23 +379,28 @@ interface FacilityAvailability {
   facility: {
     id: string;
     name: string;
+    type: 'basketball' | 'mini-basketball';
   };
-  availability: DateAvailability[];
+  availability: AvailabilityData[];
 }
 
-interface DateAvailability {
-  date: string;       // "2025-12-11"
-  courts: Court[];
+interface AvailabilityData {
+  date: Date;           // 対象日付
+  slots: TimeSlot[];    // 時間帯ごとの空き状況
 }
 
-interface Court {
-  name: string;       // "体育館　全面"
-  timeSlots: TimeSlot[];
+interface CourtStatus {
+  name: string;         // コート名（"全面", "倉庫側", "壁側"など）
+  available: boolean;   // true = 空き, false = 空いていない
 }
+
+type AvailabilityStatus = 'all-available' | 'partially-available' | 'unavailable';
 
 interface TimeSlot {
-  time: string;       // "8:30-9:00"
-  available: boolean;
+  time: string;                           // 時刻（"8:30", "9:00"など）
+  available: boolean;                     // true = いずれかのコートが空き
+  status: AvailabilityStatus;             // 空き状況のステータス
+  courts: readonly CourtStatus[];         // コート別の空き状況
 }
 ```
 
@@ -484,5 +514,5 @@ await scrapeAvailability();
 ---
 
 **作成者**: Claude (AI Assistant)
-**バージョン**: 2.1
-**最終更新**: 2025-12-06
+**バージョン**: 2.2
+**最終更新**: 2025-12-07

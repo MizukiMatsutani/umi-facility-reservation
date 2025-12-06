@@ -120,12 +120,6 @@ export default function ResultsPage() {
                         searchParams.dates[searchParams.dates.length - 1]
                       )} (${searchParams.dates.length}日間)`}
                 </div>
-                <div>
-                  <span className="font-medium">時間帯:</span>{' '}
-                  {searchParams.timeRange
-                    ? `${searchParams.timeRange.from} 〜 ${searchParams.timeRange.to}`
-                    : '全時間帯'}
-                </div>
               </div>
             </div>
           )}
@@ -288,9 +282,9 @@ export default function ResultsPage() {
           <h3 className="mb-2 font-medium text-gray-900">ヒント</h3>
           <ul className="list-inside list-disc space-y-1">
             <li>施設名をタップすると、日付ごとの詳細が表示されます</li>
-            <li>緑色の時間帯が予約可能です</li>
-            <li>グレーの時間帯は既に予約されています</li>
-            <li>時間帯リストでは、空き状況のみの表示に切り替えることもできます</li>
+            <li>表の緑色（○）が予約可能なコートです</li>
+            <li>表のグレー（×）は既に予約されているコートです</li>
+            <li>表形式で時間帯とコートの空き状況を一覧できます</li>
           </ul>
         </div>
       </div>
