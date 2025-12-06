@@ -1,9 +1,73 @@
 'use client';
 
 import { useState } from 'react';
-import type { FacilityAvailability } from '@/lib/types';
+import type { FacilityAvailability, AvailabilityData } from '@/lib/types';
 import { formatDate } from '@/lib/utils/date';
 import AvailabilityList from './AvailabilityList';
+
+/**
+ * コートごとの連続空き時間帯の配列
+ */
+interface CourtSlots {
+  courtName: string;
+  timeRanges: string[]; // ["8:30-14:00", "16:30-21:30"]
+}
+
+function calculateContinuousSlots(availData: AvailabilityData): CourtSlots[] {
+  // コート名のリストを取得（最初のスロットから）
+  if (availData.slots.length === 0 || availData.slots[0].courts.length === 0) {
+    return [];
+  }
+
+  const courtNames = availData.slots[0].courts.map(c => c.name);
+  const courtSlotsMap = new Map<string, string[]>();
+
+  // 各コートごとに連続した空き時間を探す
+  courtNames.forEach(courtName => {
+    const timeRanges: string[] = [];
+    let continuousStart: string | null = null;
+
+    availData.slots.forEach((slot, index) => {
+      const court = slot.courts.find(c => c.name === courtName);
+      const isAvailable = court?.available || false;
+
+      if (isAvailable) {
+        // 空きの場合
+        if (continuousStart === null) {
+          // 連続開始
+          continuousStart = slot.time.split('-')[0];
+        }
+      } else {
+        // 空きでない場合
+        if (continuousStart !== null) {
+          // 連続終了
+          const prevSlot = availData.slots[index - 1];
+          const endTime = prevSlot.time.split('-')[1];
+          timeRanges.push(`${continuousStart}-${endTime}`);
+          continuousStart = null;
+        }
+      }
+    });
+
+    // 最後まで連続していた場合
+    if (continuousStart !== null) {
+      const lastSlot = availData.slots[availData.slots.length - 1];
+      const endTime = lastSlot.time.split('-')[1];
+      timeRanges.push(`${continuousStart}-${endTime}`);
+    }
+
+    // 空き時間がある場合のみMapに追加
+    if (timeRanges.length > 0) {
+      courtSlotsMap.set(courtName, timeRanges);
+    }
+  });
+
+  // MapをCourtSlots配列に変換
+  return Array.from(courtSlotsMap.entries()).map(([courtName, timeRanges]) => ({
+    courtName,
+    timeRanges,
+  }));
+}
 
 /**
  * FacilityCardコンポーネントのプロパティ
@@ -44,21 +108,11 @@ export default function FacilityCard({
     }));
   };
 
-  /**
-   * スポーツ種目を日本語で表示
-   */
-  const getSportTypeLabel = (type: 'basketball' | 'mini-basketball'): string => {
-    return type === 'basketball' ? 'バスケットボール' : 'ミニバスケットボール';
-  };
-
   return (
     <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
       {/* 施設情報ヘッダー */}
       <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
         <h2 className="text-lg font-bold text-gray-900">{facility.name}</h2>
-        <p className="mt-1 text-sm text-gray-600">
-          {getSportTypeLabel(facility.type)}
-        </p>
       </div>
 
       {/* 日付ごとの空き状況セクション */}
@@ -84,10 +138,8 @@ export default function FacilityCard({
             const isExpanded = expandedDates[dateIso] ?? false;
             const dateLabel = formatDate(availData.date);
 
-            // 空きのある時間帯の数をカウント
-            const availableCount = availData.slots.filter(
-              (slot) => slot.available
-            ).length;
+            // コートごとの連続空き時間を計算
+            const continuousSlots = calculateContinuousSlots(availData);
 
             return (
               <div key={dateIso} className="px-4 py-3">
@@ -103,9 +155,24 @@ export default function FacilityCard({
                     <div className="font-semibold text-gray-900">
                       {dateLabel}
                     </div>
-                    <div className="mt-1 text-sm text-gray-600">
-                      空き: {availableCount} / {availData.slots.length}
-                    </div>
+                    {/* 連続空き時間サマリ */}
+                    {continuousSlots.length > 0 ? (
+                      <div className="mt-1 text-sm text-gray-600 space-y-0.5">
+                        {continuousSlots.map((courtSlot, index) => (
+                          <div key={index}>
+                            {courtSlot.courtName}
+                            <br />
+                            <span className="ml-4">
+                              {courtSlot.timeRanges.join('、')}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="mt-1 text-sm text-gray-500">
+                        空きなし
+                      </div>
+                    )}
                   </div>
                   <div className="flex-shrink-0">
                     <svg

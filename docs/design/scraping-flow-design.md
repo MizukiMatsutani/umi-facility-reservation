@@ -4,6 +4,7 @@
 
 | 日付 | バージョン | 変更内容 |
 |------|-----------|---------|
+| 2025-12-07 | 2.3 | 検索制限を7日間に変更、表示期間1ヶ月設定の追加 |
 | 2025-12-07 | 2.2 | コート単位データ抽出ロジックの追加、時間帯フィルタリングの削除 |
 | 2025-12-06 | 2.1 | タイムゾーン問題とStep 4のページ構造を修正 |
 | 2025-12-06 | 2.0 | 完全な調査結果を基に全面改訂 |
@@ -17,7 +18,9 @@
 
 - 対象スポーツ: バスケットボール、ミニバスケットボール
 - 対象施設: 検索結果に表示される全施設（約10施設）
-- 最大日数: 10日まで（システム制約）
+- **最大日数: 7日まで**（本システムの制限、スクレイピング対象システムへの負荷を考慮）
+  - スクレイピング対象システムは最大10日まで選択可能
+  - 本システムでは7日間に制限し、システムへの負荷を軽減
 - 時間帯: 8:30〜22:00（30分刻み）
 
 ---
@@ -157,7 +160,37 @@ interface Facility {
 
 ### 操作手順
 
-1. **対象日付のチェックボックスを選択**
+1. **表示期間を1ヶ月に設定**（検索日の最初の日から2週間以上先の日付を取得するため）
+
+   **理由**: 施設別空き状況ページは、デフォルトで当日から2週間しか表示されません。そのため、本システムで当日から2週間以上あとを選択すると、データが取れません。スクレイピング対象サイトでは、表示開始日（#dpStartDate）と表示期間（#radioPeriod1month）を設定し、検索ボタン（#btnHyoji）でクリックすることで、表示期間を1ヶ月に拡張できます。
+
+   ```typescript
+   async function setDisplayPeriodToOneMonth(page: Page, firstDate: Date) {
+     // 検索日の最初の日を設定
+     const startDateStr = format(firstDate, 'yyyy/MM/dd');
+
+     await page.evaluate((dateStr) => {
+       const startDateInput = document.querySelector('#dpStartDate') as HTMLInputElement;
+       if (startDateInput) {
+         startDateInput.value = dateStr;
+       }
+     }, startDateStr);
+
+     // 表示期間を1ヶ月に設定
+     await page.evaluate(() => {
+       const radio1Month = document.querySelector('#radioPeriod1month') as HTMLInputElement;
+       if (radio1Month) {
+         radio1Month.checked = true;
+       }
+     });
+
+     // 表示ボタンをクリック
+     await page.click('#btnHyoji');
+     await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 10000 });
+   }
+   ```
+
+2. **対象日付のチェックボックスを選択**
 
    ```typescript
    function selectDates(targetDates: Date[]) {
@@ -187,16 +220,16 @@ interface Facility {
    }
    ```
 
-2. **選択数の制限チェック**
+3. **選択数の制限チェック**
    ```typescript
    const selectedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
 
-   if (selectedCount > 10) {
-     throw new Error('最大10日まで選択可能です');
+   if (selectedCount > 7) {
+     throw new Error('最大7日まで選択可能です（本システムの制限）');
    }
    ```
 
-3. **「次へ進む」ボタンをクリック**
+4. **「次へ進む」ボタンをクリック**
    ```typescript
    await page.click('.navbar .next > a');
    await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 10000 });
@@ -476,8 +509,9 @@ await scrapeAvailability();
 
 ## 制約事項
 
-1. **最大10日まで選択可能**
-   - システム制約により10日を超えて選択するとエラー
+1. **最大7日まで選択可能**（本システムの制限）
+   - スクレイピング対象システムは最大10日まで選択可能
+   - 本システムでは7日間に制限し、システムへの負荷を軽減
 
 2. **チェックボックス選択は必ずlabelをクリック**
    - `checkbox.checked = true` では動作しない
@@ -488,7 +522,11 @@ await scrapeAvailability();
 4. **施設は全選択が前提**
    - 現在の設計では全施設を選択する
 
-5. **日付のタイムゾーン問題に注意**
+5. **施設別空き状況ページの表示期間制限**
+   - デフォルトで当日から2週間しか表示されない
+   - 2週間以上先の日付を取得する場合は、表示期間を1ヶ月に設定する必要がある
+
+6. **日付のタイムゾーン問題に注意**
    - `Date.toISOString()`はUTC時刻を返すため、日本時間（UTC+9）で日付が1日ずれる
    - **必ず`date-fns`の`format(date, 'yyyy-MM-dd')`を使用すること**
    - ❌ NG: `date.toISOString().split('T')[0]` → UTC変換により日付がずれる

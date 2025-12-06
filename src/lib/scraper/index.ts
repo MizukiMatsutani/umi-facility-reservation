@@ -438,20 +438,21 @@ export class FacilityScraper {
 
   /**
    * 施設別空き状況ページで日付を選択して時間帯別空き状況ページへ遷移
-   * 
+   *
    * Step 3 → Step 4 への遷移を実行します。
-   * 
+   *
    * @param page Puppeteerページオブジェクト
    * @param dates 取得対象の日付配列（最大10日）
    * @throws {Error} 日付が10日を超える場合、日付選択に失敗した場合
-   * 
+   *
    * @design
+   * - 検索日の最初の日から1ヶ月の表示期間に設定
    * - 日付をYYYYMMDD形式に変換
    * - checkbox.valueの最初の8文字でマッチング
    * - ○（空きあり）または△（一部空き）のみ選択
    * - 最大10日までの制限を検証
    * - labelをクリックして選択
-   * 
+   *
    * @see docs/design/scraping-flow-design.md (Step 3)
    */
   async selectDatesOnFacilityCalendar(page: Page, dates: Date[]): Promise<void> {
@@ -462,6 +463,39 @@ export class FacilityScraper {
       if (dates.length > 10) {
         throw new Error('最大10日まで選択可能です');
       }
+
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // 表示期間を1ヶ月に設定（検索日の最初の日から）
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      console.log('📍 表示期間を1ヶ月に設定中...');
+
+      // 検索日の最初の日を取得
+      const firstDate = dates[0];
+      const startDateStr = format(firstDate, 'yyyy/MM/dd');
+
+      // 表示開始日を設定
+      await page.evaluate((dateStr) => {
+        const startDateInput = document.querySelector('#dpStartDate') as HTMLInputElement;
+        if (startDateInput) {
+          startDateInput.value = dateStr;
+        }
+      }, startDateStr);
+
+      // 表示期間を1ヶ月に設定
+      await page.evaluate(() => {
+        const radio1Month = document.querySelector('#radioPeriod1month') as HTMLInputElement;
+        if (radio1Month) {
+          radio1Month.checked = true;
+        }
+      });
+
+      // 表示ボタンをクリック
+      await page.click('#btnHyoji');
+
+      // ページが更新されるまで待機
+      await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 10000 });
+
+      console.log('✅ 表示期間を1ヶ月に設定完了');
 
       // 日付チェックボックスが表示されるまで待機
       await page.waitForSelector('input[type="checkbox"][name="checkdate"]', {

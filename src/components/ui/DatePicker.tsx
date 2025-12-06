@@ -61,7 +61,11 @@ export default function DatePicker({
         selectedDates.filter((selectedDate) => !isSameDay(selectedDate, date))
       );
     } else {
-      // 選択追加
+      // 選択追加（7日間の制限）
+      if (selectedDates.length >= 7) {
+        alert('検索期間は最大7日間までです');
+        return;
+      }
       onDateSelect([...selectedDates, date]);
     }
   };
