@@ -234,7 +234,7 @@
 
 ### 3.5 Phase 2: 完全なスクレイピングフローの実装
 
-- [-] 3.5.1 HTMLセレクタの調査と文書化
+- [x] 3.5.1 HTMLセレクタの調査と文書化
   - ファイル: docs/investigation/phase2-selectors.md
   - 日付選択ページのHTML構造調査
   - 空き状況ページのHTML構造調査
@@ -244,7 +244,7 @@
   - _要件: 要件3（スクレイピング - Phase 2）_
   - _プロンプト: Role: Web Scraping Engineer with expertise in HTML structure analysis and Puppeteer selectors | Task: Investigate HTML structure of date selection page and availability page from 宇美町システム, identify correct selectors for calendar date cells (data-date attribute or similar), next/search buttons, and time slot table elements, document findings in phase2-selectors.md with example HTML snippets | Restrictions: Must manually navigate through actual site to capture HTML, test selectors in browser DevTools, document both successful and failed selector attempts, note any dynamic content or AJAX calls, verify selectors are stable (not auto-generated IDs) | Success: Document created with comprehensive selector information, example HTML snippets included for each page, all necessary selectors identified and tested, notes on dynamic behavior documented_
 
-- [-] 3.5.2 施設選択とナビゲーションメソッドの実装
+- [x] 3.5.2 施設選択とナビゲーションメソッドの実装
   - ファイル: src/lib/scraper/index.ts（継続）
   - selectFacilityAndNavigate メソッド実装
   - 施設チェックボックスの選択処理
@@ -254,7 +254,7 @@
   - _要件: 要件3（スクレイピング - Phase 2）_
   - _プロンプト: Role: Web Scraping Developer with expertise in form interaction and page navigation | Task: Implement selectFacilityAndNavigate method using facility.id to check facility checkbox via page.evaluate(), click "次へ進む" button with waitForNavigation (10 second timeout, networkidle0), handle navigation errors and timeouts, following design.md specifications | Restrictions: Must use page.evaluate() to set checkbox.checked = true, set up waitForNavigation BEFORE clicking button, use 10 second timeout, handle dialog auto-accept (already implemented), verify page URL changed after navigation, throw descriptive error if navigation fails | Success: Method successfully selects facility and navigates to date selection page, navigation completes within timeout, proper error handling for failed navigation, URL verification works_
 
-- [-] 3.5.3 日付選択とナビゲーションメソッドの実装
+- [x] 3.5.3 日付選択とナビゲーションメソッドの実装
   - ファイル: src/lib/scraper/index.ts（継続）
   - selectDateAndNavigate メソッド実装
   - カレンダーUI操作（日付クリック）
@@ -264,7 +264,7 @@
   - _要件: 要件3（スクレイピング - Phase 2）_
   - _プロンプト: Role: Web Scraping Developer with expertise in calendar UI interaction | Task: Implement selectDateAndNavigate method using date-fns format() to convert Date to selector format (e.g., yyyy-MM-dd or MM/dd), click calendar date cell via page.evaluate(), wait for navigation to availability page (10 second timeout, networkidle0), handle calendar interaction errors, following design.md specifications | Restrictions: Must format date correctly for selector (verify format from investigation), use page.evaluate() for date cell click, set up waitForNavigation before click, use 10 second timeout, handle case where date is unavailable/disabled in calendar, throw descriptive error on failure | Success: Method successfully selects date and navigates to availability page, date formatting works correctly, navigation completes within timeout, handles disabled dates gracefully, proper error handling_
 
-- [-] 3.5.4 空き状況データ取得メソッドの実装
+- [x] 3.5.4 空き状況データ取得メソッドの実装
   - ファイル: src/lib/scraper/index.ts（継続）
   - scrapeAvailabilityFromPage メソッド実装
   - 時間帯テーブルのパース処理
@@ -274,7 +274,7 @@
   - _要件: 要件3（スクレイピング - Phase 2）_
   - _プロンプト: Role: Web Scraping Developer with expertise in table parsing and data extraction | Task: Implement scrapeAvailabilityFromPage method using page.evaluate() to extract time slot table rows, parse time cells and status cells (○=空き, △=一部空き, ×=空いていない, -=対象外), convert to TimeSlot[] format ({time: string, available: boolean}), handle missing or malformed table data gracefully | Restrictions: Must extract data via page.evaluate() for performance, correctly interpret status symbols (○/△ = available true, ×/- = available false), parse time format to HH:mm string, handle empty tables (return empty array), throw descriptive error if table structure changed significantly | Success: Method extracts time slots correctly from availability page, status symbols interpreted correctly, TimeSlot format correct, handles edge cases (empty table, missing cells), proper error handling_
 
-- [-] 3.5.5 戻るナビゲーションメソッドの実装
+- [x] 3.5.5 戻るナビゲーションメソッドの実装
   - ファイル: src/lib/scraper/index.ts（継続）
   - navigateBack メソッド実装
   - ブラウザ履歴のback処理
@@ -284,7 +284,7 @@
   - _要件: 要件3（スクレイピング - Phase 2）_
   - _プロンプト: Role: Web Scraping Developer with expertise in browser navigation management | Task: Implement navigateBack method using page.goBack() with Promise.all pattern (waitForNavigation + goBack), 10 second timeout, networkidle0 wait strategy, handle back navigation errors, following design.md specifications | Restrictions: Must use Promise.all([waitForNavigation, goBack()]) pattern, use 10 second timeout, verify page URL changed after back navigation, handle case where back navigation fails (no history), throw descriptive error on timeout | Success: Method successfully navigates back to previous page, navigation completes within timeout, proper error handling for failed back navigation, URL verification works_
 
-- [-] 3.5.6 Phase 2フロー統合（scrapeAvailabilityメソッドの書き換え）
+- [x] 3.5.6 Phase 2フロー統合（scrapeAvailabilityメソッドの書き換え）
   - ファイル: src/lib/scraper/index.ts（継続）
   - scrapeAvailability メソッドの完全書き換え
   - Phase 2メソッドの統合オーケストレーション

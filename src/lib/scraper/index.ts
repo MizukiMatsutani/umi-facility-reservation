@@ -333,6 +333,347 @@ export class FacilityScraper {
   }
 
   /**
+   * 施設を選択して日付選択ページへ遷移
+   * Phase 2: 施設一覧ページ → 日付選択ページ
+   *
+   * @param page - Puppeteerページインスタンス
+   * @param facilityId - 施設ID (例: "341007")
+   */
+  private async selectFacilityAndNavigate(
+    page: Page,
+    facilityId: string
+  ): Promise<void> {
+    try {
+      console.log(`施設選択: ID=${facilityId}`);
+
+      // 施設のチェックボックスを選択
+      await page.evaluate((id) => {
+        const checkbox = document.querySelector(
+          `#checkShisetsu${id}`
+        ) as HTMLInputElement;
+        if (!checkbox) {
+          throw new Error(`施設チェックボックスが見つかりません: checkShisetsu${id}`);
+        }
+        checkbox.checked = true;
+        checkbox.click(); // onclickイベントを発火
+      }, facilityId);
+
+      console.log('✅ 施設を選択しました');
+
+      // 少し待機（UIの更新を待つ）
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // 「次へ進む」ボタンの存在確認
+      const nextButtonExists = await page.evaluate(() => {
+        const btn = document.querySelector('#btnNext') as HTMLElement;
+        return {
+          exists: !!btn,
+          visible: btn ? window.getComputedStyle(btn).display !== 'none' : false,
+        };
+      });
+
+      if (!nextButtonExists.exists) {
+        throw new Error('「次へ進む」ボタンが見つかりません');
+      }
+
+      if (!nextButtonExists.visible) {
+        throw new Error('「次へ進む」ボタンが表示されていません');
+      }
+
+      console.log('「次へ進む」ボタンをクリックします...');
+
+      // ページ遷移を待機しながら「次へ進む」ボタンをクリック
+      await Promise.all([
+        page.waitForNavigation({
+          waitUntil: 'networkidle0',
+          timeout: 10000,
+        }),
+        page.click('#btnNext'),
+      ]);
+
+      console.log('✅ 日付選択ページへ遷移しました');
+      console.log('現在のURL:', page.url());
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(
+          `施設選択とナビゲーションに失敗: ${error.message}`
+        );
+      }
+      throw new Error('施設選択とナビゲーションに失敗しました');
+    }
+  }
+
+  /**
+   * 日付を選択して空き状況ページへ遷移
+   * Phase 2: 日付選択ページ → 空き状況ページ
+   *
+   * @param page - Puppeteerページインスタンス
+   * @param targetDate - 選択する日付
+   */
+  private async selectDateAndNavigate(
+    page: Page,
+    targetDate: Date
+  ): Promise<void> {
+    try {
+      const year = targetDate.getFullYear();
+      const month = targetDate.getMonth(); // 0-indexed
+      const day = targetDate.getDate();
+
+      console.log(`日付選択: ${year}年${month + 1}月${day}日`);
+
+      // 複数のセレクタパターンを試す
+      const dateSelected = await page.evaluate(
+        (y, m, d) => {
+          // パターン1: data-date属性 (yyyy-mm-dd形式)
+          const dateStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+          let dateElement = document.querySelector(
+            `[data-date="${dateStr}"]`
+          ) as HTMLElement;
+
+          if (dateElement) {
+            console.log(`日付要素を発見 (data-date): ${dateStr}`);
+            dateElement.click();
+            return true;
+          }
+
+          // パターン2: jQuery UI Datepicker
+          dateElement = document.querySelector(
+            `td[data-year="${y}"][data-month="${m}"] a[data-date="${d}"]`
+          ) as HTMLElement;
+
+          if (dateElement) {
+            console.log(`日付要素を発見 (jQuery UI)`);
+            dateElement.click();
+            return true;
+          }
+
+          // パターン3: カスタムカレンダー (data-dateにdd形式)
+          const dayStr = String(d).padStart(2, '0');
+          dateElement = document.querySelector(
+            `td[data-date="${dayStr}"], a[data-date="${dayStr}"]`
+          ) as HTMLElement;
+
+          if (dateElement) {
+            console.log(`日付要素を発見 (day only): ${dayStr}`);
+            dateElement.click();
+            return true;
+          }
+
+          // パターン4: クリック可能な日付セル (textContentで検索)
+          const dateCells = Array.from(
+            document.querySelectorAll('td.date-cell, td.calendar-day, td[class*="day"]')
+          );
+          for (const cell of dateCells) {
+            if (cell.textContent?.trim() === String(d)) {
+              console.log(`日付要素を発見 (textContent): ${d}`);
+              (cell as HTMLElement).click();
+              return true;
+            }
+          }
+
+          return false;
+        },
+        year,
+        month,
+        day
+      );
+
+      if (!dateSelected) {
+        throw new Error(
+          `日付要素が見つかりません: ${year}-${month + 1}-${day}`
+        );
+      }
+
+      console.log('✅ 日付を選択しました');
+
+      // 少し待機（UIの更新を待つ）
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // 検索/次へボタンを探してクリック
+      const buttonClicked = await page.evaluate(() => {
+        // ボタンのパターン
+        const selectors = [
+          '#btnSearch',
+          '#btnNext',
+          'input[type="button"][value*="検索"]',
+          'button[type="submit"]',
+          'a.btnBlue',
+        ];
+
+        for (const selector of selectors) {
+          const btn = document.querySelector(selector) as HTMLElement;
+          if (btn && window.getComputedStyle(btn).display !== 'none') {
+            console.log(`ボタンをクリック: ${selector}`);
+            btn.click();
+            return true;
+          }
+        }
+
+        return false;
+      });
+
+      if (!buttonClicked) {
+        // ボタンがない場合、自動遷移を待つ
+        console.log('検索ボタンが見つからないため、自動遷移を待機します...');
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      } else {
+        // ページ遷移を待機
+        await page.waitForNavigation({
+          waitUntil: 'networkidle0',
+          timeout: 10000,
+        });
+      }
+
+      console.log('✅ 空き状況ページへ遷移しました');
+      console.log('現在のURL:', page.url());
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`日付選択とナビゲーションに失敗: ${error.message}`);
+      }
+      throw new Error('日付選択とナビゲーションに失敗しました');
+    }
+  }
+
+  /**
+   * 空き状況ページから時間帯データを取得
+   * Phase 2: 空き状況ページでのデータ抽出
+   *
+   * @param page - Puppeteerページインスタンス
+   * @param targetDate - 対象日付
+   * @returns 時間帯ごとの空き状況
+   */
+  private async scrapeAvailabilityFromPage(
+    page: Page,
+    targetDate: Date
+  ): Promise<TimeSlot[]> {
+    try {
+      console.log('空き状況ページからデータを取得中...');
+
+      // テーブルが表示されるまで待機（複数のパターンを試す）
+      const tableFound = await page
+        .waitForSelector('table.availability-table, table#availability, table tbody tr', {
+          timeout: 5000,
+        })
+        .then(() => true)
+        .catch(() => false);
+
+      if (!tableFound) {
+        console.log('⚠️ 時間帯テーブルが見つかりません（空きデータなし）');
+        return [];
+      }
+
+      // 時間帯データをパース
+      const timeSlots = await page.evaluate(() => {
+        // テーブル行を取得（複数のセレクタパターンを試す）
+        const rows = Array.from(
+          document.querySelectorAll(
+            'table.availability-table tbody tr, table#availability tbody tr, table tbody tr'
+          )
+        );
+
+        if (rows.length === 0) {
+          console.log('テーブル行が見つかりません');
+          return [];
+        }
+
+        const slots: Array<{ time: string; available: boolean }> = [];
+
+        for (const row of rows) {
+          // 時刻セルを探す（複数のパターン）
+          const timeCellSelectors = ['td.time', 'td:first-child', 'th.time'];
+          let timeText = '';
+          for (const selector of timeCellSelectors) {
+            const cell = row.querySelector(selector);
+            if (cell) {
+              timeText = cell.textContent?.trim() || '';
+              if (timeText) break;
+            }
+          }
+
+          // ステータスセルを探す
+          const statusCellSelectors = ['td.status', 'td:nth-child(2)', 'td:last-child'];
+          let statusText = '';
+          for (const selector of statusCellSelectors) {
+            const cell = row.querySelector(selector);
+            if (cell) {
+              statusText = cell.textContent?.trim() || '';
+              if (statusText) break;
+            }
+          }
+
+          // 時刻のパース
+          if (!timeText) continue;
+
+          // "8:30 - 9:00" 形式から開始時刻を抽出
+          let startTime = timeText.split('-')[0]?.trim() || '';
+
+          // "HH:MM" 形式に正規化
+          if (startTime.match(/^\d{1,2}:\d{2}$/)) {
+            const [h, m] = startTime.split(':');
+            startTime = `${h.padStart(2, '0')}:${m}`;
+          }
+
+          if (!startTime) continue;
+
+          // ステータスの判定
+          // ○ = 空き, △ = 一部空き (空きとして扱う), × = 空いていない, - = 対象外
+          const available = statusText === '○' || statusText === '△';
+
+          slots.push({
+            time: startTime,
+            available,
+          });
+        }
+
+        console.log(`${slots.length}件の時間帯を取得しました`);
+        return slots;
+      });
+
+      if (timeSlots.length === 0) {
+        console.log('⚠️ 時間帯データが取得できませんでした');
+        return [];
+      }
+
+      console.log(`✅ ${timeSlots.length}件の時間帯データを取得しました`);
+
+      return timeSlots;
+    } catch (error) {
+      // エラーでも空配列を返す（施設によってはデータがない可能性）
+      console.error('空き状況の取得中にエラーが発生:', error);
+      return [];
+    }
+  }
+
+  /**
+   * ブラウザの戻るボタンで前のページに戻る
+   * Phase 2: 空き状況ページ → 日付選択ページ
+   *
+   * @param page - Puppeteerページインスタンス
+   */
+  private async navigateBack(page: Page): Promise<void> {
+    try {
+      console.log('前のページに戻ります...');
+
+      // ブラウザの戻るボタンを使用してナビゲーション
+      await Promise.all([
+        page.waitForNavigation({
+          waitUntil: 'networkidle0',
+          timeout: 10000,
+        }),
+        page.goBack(),
+      ]);
+
+      console.log('✅ 前のページに戻りました');
+      console.log('現在のURL:', page.url());
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`戻るナビゲーションに失敗: ${error.message}`);
+      }
+      throw new Error('戻るナビゲーションに失敗しました');
+    }
+  }
+
+  /**
    * 空き状況のスクレイピング
    *
    * @param page - Puppeteerページインスタンス
@@ -341,116 +682,87 @@ export class FacilityScraper {
    * @param timeRange - オプションの時間範囲フィルタ
    * @returns 日付ごとの空き状況データ
    */
+  /**
+   * Phase 2: 完全な空き状況スクレイピングフロー
+   * 施設選択 → 日付選択 → 空き状況取得 → 複数日対応
+   *
+   * @param page - Puppeteerページインスタンス
+   * @param facility - 施設情報
+   * @param dates - 検索対象の日付配列
+   * @param timeRange - 時間範囲フィルタ（オプション）
+   * @returns 日付ごとの空き状況データ
+   */
   async scrapeAvailability(
     page: Page,
     facility: Facility,
     dates: Date[],
     timeRange?: TimeRange
   ): Promise<AvailabilityData[]> {
-    // 各日付に対して空き状況を取得
     const results: AvailabilityData[] = [];
-    
+
     try {
-      // 施設一覧ページから「本日の予定」をスクレイピング
-      // 施設名を含む見出しを探す（例: "宇美勤労者体育センターの本日の予定"）
-      const facilitySchedule = await page.evaluate((facilityName) => {
-        // 施設名を含むh2要素を探す
-        const headings = Array.from(document.querySelectorAll('h2'));
-        const facilityHeading = headings.find(h => 
-          h.textContent?.includes(facilityName) && h.textContent?.includes('の本日の予定')
-        );
+      console.log(`\n📋 施設「${facility.name}」の空き状況を取得します`);
+      console.log(`対象日数: ${dates.length}日`);
 
-        if (!facilityHeading) {
-          return null;
-        }
+      // Step 1: 施設を選択して日付選択ページへ遷移
+      await this.selectFacilityAndNavigate(page, facility.id);
 
-        // この見出しの次にある .item_wrap を取得
-        const itemWrap = facilityHeading.nextElementSibling;
-        if (!itemWrap || !itemWrap.classList.contains('item_wrap')) {
-          return null;
-        }
+      // Step 2: 各日付に対して空き状況を取得
+      for (let i = 0; i < dates.length; i++) {
+        const targetDate = dates[i];
+        console.log(`\n📅 日付 ${i + 1}/${dates.length}: ${targetDate.toISOString().split('T')[0]}`);
 
-        // 各 .item（施設の部屋/エリア）を処理
-        const items = Array.from(itemWrap.querySelectorAll('.item'));
-        
-        return items.map(item => {
-          const areaName = item.querySelector('h3')?.textContent?.trim() || '';
-          const table = item.querySelector('table');
-          
-          if (!table) {
-            return { areaName, slots: [] };
-          }
+        try {
+          // 日付を選択して空き状況ページへ遷移
+          await this.selectDateAndNavigate(page, targetDate);
 
-          // テーブルの各行（時間帯）を処理
-          const rows = Array.from(table.querySelectorAll('tbody tr'));
-          const slots = rows.slice(1).map(row => { // 最初の行はヘッダーなのでスキップ
-            const cells = Array.from(row.querySelectorAll('td'));
-            return {
-              timeRange: cells[0]?.textContent?.trim() || '',
-              user: cells[1]?.textContent?.trim() || '',
-              purpose: cells[2]?.textContent?.trim() || '',
-            };
-          });
+          // 空き状況データを取得
+          const slots = await this.scrapeAvailabilityFromPage(page, targetDate);
 
-          return { areaName, slots };
-        });
-      }, facility.name);
-
-      if (!facilitySchedule) {
-        console.error(`施設「${facility.name}」の予定が見つかりませんでした`);
-        return [];
-      }
-
-      // 各日付に対して空き状況データを生成
-      for (const targetDate of dates) {
-        const dateObj = new Date(targetDate);
-        dateObj.setHours(0, 0, 0, 0);
-
-        // facilityScheduleをTimeSlot形式に変換
-        const slots: TimeSlot[] = [];
-        
-        for (const area of facilitySchedule) {
-          for (const slot of area.slots) {
-            // 時間範囲をパース（例: "9:00～13:00"）
-            const timeMatch = slot.timeRange.match(/(\d+):(\d+)～(\d+):(\d+)/);
-            if (!timeMatch) continue;
-
-            const startHour = parseInt(timeMatch[1]);
-            const startMinute = parseInt(timeMatch[2]);
-
-            // 開始時刻を文字列として構築（例: "9:00"）
-            const timeString = `${startHour}:${startMinute.toString().padStart(2, '0')}`;
-
-            // 利用者が「」または空の場合は空きとみなす
-            const available = !slot.user || slot.user === '';
-
-            slots.push({
-              time: timeString,
-              available,
+          // 時間範囲でフィルタリング
+          let filteredSlots = slots;
+          if (timeRange) {
+            console.log(`⏰ 時間範囲フィルタを適用: ${timeRange.from} 〜 ${timeRange.to}`);
+            filteredSlots = slots.filter((slot) => {
+              return slot.time >= timeRange.from && slot.time <= timeRange.to;
             });
+            console.log(`フィルタ後: ${filteredSlots.length}件`);
           }
-        }
 
-        // 時間範囲でフィルタリング
-        let filteredSlots = slots;
-        if (timeRange) {
-          filteredSlots = slots.filter(slot => {
-            // timeRange.fromとtimeRange.toの範囲内の時間帯のみを含める
-            return slot.time >= timeRange.from && slot.time <= timeRange.to;
+          // 結果を追加
+          const dateObj = new Date(targetDate);
+          dateObj.setHours(0, 0, 0, 0);
+
+          results.push({
+            date: dateObj,
+            slots: filteredSlots,
+          });
+
+          // 最後の日付以外は日付選択ページに戻る
+          if (i < dates.length - 1) {
+            await this.navigateBack(page);
+          }
+        } catch (dateError) {
+          console.error(
+            `日付 ${targetDate.toISOString().split('T')[0]} の処理中にエラー:`,
+            dateError
+          );
+          // エラーが発生しても次の日付の処理は続行
+          // 空のデータを追加
+          const dateObj = new Date(targetDate);
+          dateObj.setHours(0, 0, 0, 0);
+          results.push({
+            date: dateObj,
+            slots: [],
           });
         }
-
-        results.push({
-          date: dateObj,
-          slots: filteredSlots,
-        });
       }
 
+      console.log(`\n✅ 施設「${facility.name}」の取得完了: ${results.length}日分`);
       return results;
-
     } catch (error) {
       console.error(
-        `Failed to scrape availability for ${facility.name}:`,
+        `❌ 施設「${facility.name}」の空き状況取得に失敗:`,
         error
       );
       return [];
