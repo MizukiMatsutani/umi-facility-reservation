@@ -1,65 +1,142 @@
-import Image from "next/image";
+'use client';
 
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import SearchForm from '@/components/SearchForm';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import ErrorMessage from '@/components/ui/ErrorMessage';
+import { SearchParams } from '@/lib/types';
+import { ScrapeRequest, ScrapeResponse, ErrorResponse, ErrorType } from '@/lib/types/api';
+
+/**
+ * トップページ（検索フォーム）
+ *
+ * ユーザーのエントリーポイントとなる検索フォームを表示します。
+ * フォーム送信時に/api/scrapeを呼び出し、結果ページにナビゲートします。
+ */
 export default function Home() {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<{ type: ErrorType; message: string } | null>(null);
+
+  /**
+   * 検索フォーム送信ハンドラ
+   *
+   * 検索パラメータを受け取り、/api/scrapeにPOSTリクエストを送信します。
+   * 成功時は結果を含めて/resultsページにナビゲートし、
+   * エラー時はエラーメッセージを表示します。
+   */
+  const handleSubmit = async (params: SearchParams) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // SearchParamsからScrapeRequestに変換（Date[] → string[]）
+      const request: ScrapeRequest = {
+        dates: params.dates.map((date) => date.toISOString().split('T')[0]), // YYYY-MM-DD形式
+        timeRange: params.timeRange,
+      };
+
+      // /api/scrapeにPOSTリクエスト送信
+      const response = await fetch('/api/scrape', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+
+      // レスポンス処理
+      if (response.ok) {
+        // 成功時: 結果ページにナビゲート
+        const data: ScrapeResponse = await response.json();
+
+        // 結果データをセッションストレージに保存
+        sessionStorage.setItem('searchResults', JSON.stringify(data.facilities));
+        sessionStorage.setItem('searchParams', JSON.stringify(params));
+
+        // 結果ページにナビゲート
+        router.push('/results');
+      } else {
+        // エラー時: エラーメッセージを表示
+        const errorData: ErrorResponse = await response.json();
+        setError({
+          type: errorData.error,
+          message: errorData.message,
+        });
+      }
+    } catch (err) {
+      // ネットワークエラーなど予期しないエラーの処理
+      console.error('検索エラー:', err);
+      setError({
+        type: 'network',
+        message: '施設情報の取得に失敗しました。しばらく経ってから再度お試しください',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /**
+   * 再試行ハンドラ
+   *
+   * エラー状態をクリアして、ユーザーが再度検索フォームを送信できるようにします。
+   */
+  const handleRetry = () => {
+    setError(null);
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-2xl">
+        {/* ヘッダー */}
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl">
+            宇美町施設予約検索
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="mt-3 text-base text-gray-600 sm:text-lg">
+            バスケットボール・ミニバスケットボール利用可能施設の空き状況を検索できます
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        {/* メインコンテンツ */}
+        <div className="rounded-lg bg-white px-6 py-8 shadow-md sm:px-8">
+          {isLoading ? (
+            // ローディング状態
+            <LoadingSpinner message="施設情報を取得しています..." />
+          ) : error ? (
+            // エラー状態
+            <div className="space-y-4">
+              <ErrorMessage
+                errorType={error.type}
+                message={error.message}
+                onRetry={handleRetry}
+              />
+              {/* エラー後も検索フォームを表示 */}
+              <div className="border-t border-gray-200 pt-6">
+                <h2 className="mb-4 text-lg font-medium text-gray-900">
+                  検索条件を変更して再度お試しください
+                </h2>
+                <SearchForm onSubmit={handleSubmit} isLoading={isLoading} />
+              </div>
+            </div>
+          ) : (
+            // 通常状態: 検索フォーム表示
+            <SearchForm onSubmit={handleSubmit} isLoading={isLoading} />
+          )}
         </div>
-      </main>
+
+        {/* フッター（使い方ヒント） */}
+        <div className="mt-6 rounded-lg bg-blue-50 p-4 text-sm text-gray-700">
+          <h3 className="mb-2 font-medium text-gray-900">使い方</h3>
+          <ul className="list-inside list-disc space-y-1">
+            <li>「本日から1週間」ボタンで簡単に日付を選択できます</li>
+            <li>カレンダーから個別の日付を選択することもできます</li>
+            <li>時間帯を指定すると、その時間帯の空き状況のみ表示されます</li>
+            <li>時間帯を指定しない場合は、全時間帯の空き状況が表示されます</li>
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }
