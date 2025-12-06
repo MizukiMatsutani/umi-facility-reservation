@@ -1,0 +1,1444 @@
+<!DOCTYPE html><!--[if IE 8 ]> <html class="lt-ie9 ie8" lang="ja"> <![endif]--><!--[if IE 9 ]> <html class="lt-ie10 ie9" lang="ja"> <![endif]--><!--[if (gte IE 10)|!(IE)]><!--><html lang="ja" class="remodal_lock"><!--<![endif]--><head><meta charset="utf-8"><title>
+	公共施設予約システム
+</title><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Cache-Control" content="no-cache"><meta http-equiv="Expires" content="-1"><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <link href="/Umi/web/Content/css/font-awesome.min.css?LastUpdDate=20160421" rel="stylesheet" type="text/css">
+    <link href="/Umi/web/Content/css/jquery-ui-1.11.2.min.css?LastUpdDate=20160421" rel="stylesheet" type="text/css">
+    <link href="/Umi/web/Content/css/default.css?LastUpdDate=20160421" rel="stylesheet" type="text/css">
+    <link href="/Umi/web/Content/css/default_print.css?LastUpdDate=20160421" media="print" rel="stylesheet" type="text/css">
+    <link href="/Umi/web/Content/css/tooltipster.css?LastUpdDate=20160421" rel="stylesheet" type="text/css">
+    <link href="/Umi/web/Content/css/jquery.remodal.css?LastUpdDate=20160421" rel="stylesheet" type="text/css">
+    <script type="text/javascript" src="/Umi/web/Scripts/jquery-1.11.1.min.js?LastUpdDate=20160421"></script>
+    <script type="text/javascript" src="/Umi/web/Scripts/jquery-ui-1.11.2.min.js?LastUpdDate=20160421"></script>
+    <script type="text/javascript" src="/Umi/web/Scripts/common.js?LastUpdDate=20160421"></script>
+    <script type="text/javascript" src="/Umi/web/Scripts/jquery.tooltipster.min.js?LastUpdDate=20160421"></script>
+    <script type="text/javascript" src="/Umi/web/Scripts/jquery.remodal.js?LastUpdDate=20160421"></script>
+    <script type="text/javascript" src="/Umi/web/Scripts/jquery.inputfocus.js?LastUpdDate=20160421"></script>
+	<!--[if lt IE 9]> 
+	<script src="/Umi/web/Scripts/html5.js?LastUpdDate=20160421"></script>
+	<script src="/Umi/web/Scripts/IE9.js?LastUpdDate=20160421"></script>
+	<script src="/Umi/web/Scripts/css3-mediaqueries.js?LastUpdDate=20160421"></script> 
+	<![endif]-->
+    <script type="text/javascript">
+
+        $(document).ready(function () {
+            unload_flg = 1;
+            
+            // 文字サイズ変更時のみスケール調整
+            
+        });
+	    $(document).on('close', '[data-remodal-id=logoutInfo]', function () {
+		    dialog_flg = 0;
+	    });
+	    $(document).on('close', '[data-remodal-id=loginInfo]', function () {
+		    dialog_flg = 0;
+	    });
+        $.ajaxSetup({
+            error: function (xhr, status, error) {
+                    var errorpage = 'https://www.11489.jp/Umi/Web/Error/html/GenericError.html';
+                    if (errorpage) {
+                        dialog_flg = 1; // アンロードのメッセージを表示させない
+                        window.location.href = errorpage;
+                    }
+                }
+        });
+    </script>
+  
+<link href="/Umi/web/Content/css/WgR_ShisetsuKensaku.css?LastUpdDate=20160421" media="screen" rel="stylesheet" type="text/css">
+<script type="text/javascript" src="/Umi/web/Scripts/MicrosoftAjax.debug.js?LastUpdDate=20160421"></script>
+<script type="text/javascript" src="/Umi/web/Scripts/MicrosoftMvcAjax.js?LastUpdDate=20160421"></script>
+
+<!-- 付帯設備情報 start -->
+<style type="text/css">
+
+	.list table td.equip ul li.equip01,
+	.remodal.detail > div.equip > ul li.equip01{
+		background-image: url(/Umi/web/Content/images/sign/bell.png);
+	}
+
+	.list table td.equip ul li.equip02,
+	.remodal.detail > div.equip > ul li.equip02{
+		background-image: url(/Umi/web/Content/images/sign/slope.png);
+	}
+
+	.list table td.equip ul li.equip03,
+	.remodal.detail > div.equip > ul li.equip03{
+		background-image: url(/Umi/web/Content/images/sign/slopeP.png);
+	}
+
+	.list table td.equip ul li.equip04,
+	.remodal.detail > div.equip > ul li.equip04{
+		background-image: url(/Umi/web/Content/images/sign/toilet.png);
+	}
+
+	.list table td.equip ul li.equip05,
+	.remodal.detail > div.equip > ul li.equip05{
+		background-image: url(/Umi/web/Content/images/sign/rental.png);
+	}
+
+	.list table td.equip ul li.equip06,
+	.remodal.detail > div.equip > ul li.equip06{
+		background-image: url(/Umi/web/Content/images/sign/parking.png);
+	}
+
+	.list table td.equip ul li.equip07,
+	.remodal.detail > div.equip > ul li.equip07{
+		background-image: url(/Umi/web/Content/images/sign/baby.png);
+	}
+
+	.list table td.equip ul li.equip08,
+	.remodal.detail > div.equip > ul li.equip08{
+		background-image: url(/Umi/web/Content/images/sign/milk.png);
+	}
+
+</style>
+<!-- 付帯設備情報 end -->
+<!-- 地図情報JS start -->
+<script type="text/javascript">
+	    function OpenMapWindow() 
+        {               
+            var shisetsuList = document.getElementsByName("checkShisetsu");
+            var shisetsuListVal = new Array();
+            for(i = 0; i < shisetsuList.length; i++)
+            {
+                if (shisetsuList[i].checked){
+                    shisetsuListVal.push(shisetsuList[i].value);
+                }
+            }
+
+	        var callAdr = "";
+	        for (var i = 0; i < shisetsuListVal.length; i++) {
+	            var adr = GetMapAdr(shisetsuListVal[i]);
+                callAdr = callAdr + adr + ",";
+	        }
+            
+	        array_CallAdr = callAdr.split(","); 
+
+	        if (array_CallAdr.length == 0) showMessageDialog('failure','エラー', '地図で場所を確認したい施設を選択してください。');
+            else {
+	            var openFlg = "False"; 
+                
+                for (var no = 0; no < array_CallAdr.length - 1; no++) {
+	                if (array_CallAdr[no] != "") {
+	                    window.open(array_CallAdr[no], "", "toolbar=yes,location=yes,directories=yes,status=yes,menubar=yes,scrollbars=yes,resizable=yes,width=750,height=600 ");
+                        openFlg = "True";
+	                }
+	            }
+
+	            if (openFlg == "False") showMessageDialog('failure','エラー', '地図で場所を確認したい施設を選択してください。');
+	        }
+        }
+
+        // 地図アドレス
+	    function GetMapAdr(jiss) {
+
+	        var hdnName = "map_" + jiss;
+	        var obj = document.forms.form1.elements[hdnName];
+
+            var url = obj.value
+
+            return url;
+	        
+	    }
+<!-- 地図情報JS end -->
+<!-- パワーチップ設定 start -->     
+	    $(document).ready(function() {
+	        $('.breadcrumbs a').tooltipster({
+	            potision: 'bottom'
+	        });
+            $(document).on('mouseover', 'div', function() {
+	            $('table td.equip ul li').tooltipster({
+					potision: 'bottom',
+					multiple: true
+	            });
+            });
+
+		    $('#btnNext').tooltipster({
+                minWidth: 250,
+			    content: '施設を選んだら、次へ進みましょう。',
+			    autoClose: false,
+			    positionTracker: true,
+				multiple: true
+		    });
+
+            setToggleOutline();
+
+			// アンロード時のダイアログ対象外、二重送信
+			beforeSubmit("",".list_head .toggle li label");
+
+<!-- スクロール設定 start --> 
+            var scroll = "";
+
+            if (scroll != "") {
+	            var target = $('#' + scroll);
+	            var position = target.offset().top - 20;
+	            $("html, body").animate({ scrollTop: position }, 800);
+            } 
+<!-- スクロール設定 end --> 
+	    });
+<!-- パワーチップ設定 end -->
+        $(document).ajaxComplete(function() {
+		    setToggleOutline();
+
+			// アンロード時のダイアログ対象外、二重送信
+			beforeSubmit("",".list_head .toggle li label");
+
+		    $('#btnNext').tooltipster({
+                minWidth: 250,
+			    content: '施設を選んだら、次へ進みましょう。',
+			    autoClose: false,
+			    positionTracker: true,
+				multiple: true
+		    });
+
+	    });
+
+	    // トグルボタンフォーカス時のアウトライン調整
+	    function setToggleOutline(){
+		    $(".toggle li > input, td.toggle > input").on("focus", function(){
+			    if(this.parentNode.tagName == "LI" || this.parentNode.tagName == "TD"){
+				    var childElem = this.parentNode.childNodes;
+				    if(childElem[0].tagName=="INPUT" && childElem[1].tagName=="LABEL"){
+					    $(childElem[0]).css("width", childElem[1].offsetWidth-2);
+					    $(childElem[0]).css("height", childElem[1].offsetHeight-1);
+				    }
+			    }
+		    });
+	    }
+
+        // 次へボタンのパワーチップ設定
+	    function showNextTip() {
+
+        // フォントサイズが未設定のときのみ表示
+
+            // ボタンにパワーチップ表示
+	        $('#btnNext').tooltipster('show');
+
+	    }
+<!-- 明細差分取得start -->
+        var btnClickSuu = 0;
+        var btnKaisuu = 0;
+
+        function readMesaiData(){
+             btnClickSuu++;
+
+             $.ajax({
+                url: 'WgR_ShisetsuKensakuIchiran',
+                type: "GET",
+                datatype: "json",
+                cache: false,
+                traditional: true,
+                success: function (j_data) {
+                    $("#shisetsutbl").append(j_data);
+                }
+             });
+
+             if(btnKaisuu == btnClickSuu)
+             {
+                 $("#nextpage").empty(); //divだけを消す
+             }
+
+             setToggleOutline();
+
+			// アンロード時のダイアログ対象外、二重送信
+			beforeSubmit("",".list_head .toggle li label");
+
+             // モーダル差分
+             $.ajax({
+                url: 'WgR_ShisetsuKensakuModal',
+                type: "GET",
+                datatype: "json",
+                cache: false,
+                traditional: true,
+                success: function (k_data) {
+                    // 差分追加
+                    $("body").append((k_data));
+                    $('.remodal').remodal({hashTracking:false});
+
+
+                }
+             });
+        }
+<!-- 明細差分取得end -->
+	</script> 
+
+    <style type="text/css">
+        
+        
+        /**** 文字サイズ変更時のみスケール調整 ****/
+        
+    </style>
+    </head>
+
+<body class="remodal_lock remodal_active" style="padding-right: 0px; overflow-x: hidden;">
+<form action="/Umi/web/Yoyaku/WgR_ShisetsuKensaku" id="form1" method="post" autocomplete="off"><input name="__RequestVerificationToken" type="hidden" value="8n9n78Ih7erXTaL2cfW7Du+ua9mR9Cw6x9g4z1pbI6Sg4LeYmFVf+5rkOQ2VLka6T0dPDKzLcSzNRwM/m+g7cvz4HwG1FqefJpKXWnOaQUfzE9PBZwpmPe9V5KZdzjyhcUCfEg==">
+<input type="hidden" name="__EVENTTARGET" id="__EVENTTARGET" value="">
+<input type="hidden" name="__EVENTARGUMENT" id="__EVENTARGUMENT" value="">
+<div id="wrap" class="remodal-bg">
+	<div id="wrap_head">
+        
+        <div id="head">
+        
+        <h1><span class="city">宇美町</span><span class="title">公共施設予約システム</span></h1>
+        
+			  <ul>
+                  <li class="style"><a href="javascript:__doPostBack('color','')">色・文字サイズ変更</a></li>
+			  </ul>
+			  <div class="dock_nav">
+				  <a href="#nav">メニュー</a>
+			  </div>
+		  </div>
+	</div>
+  <div id="body">
+    
+   
+    <ul class="breadcrumbs clearfix">
+		<li><a href="javascript:__doPostBack('menu','')" class="tooltipstered">メニュー</a></li>
+		<li class="current"><span>施設の検索</span></li>
+		<li>施設別空き状況</li>
+		<li>時間帯別空き状況</li>
+		<li>詳細申請</li>
+		<li>申込確認</li>
+		<li>申込完了</li>
+	</ul>
+	<div class="content_head">
+	    <h2>施設検索</h2>
+        <p class="desc">
+        空き状況の照会や予約をしたい施設の名称を選んで「次へ進む」を押してください。                                               
+        複数選択可能です。
+        </p>
+	</div>
+	<div class="content_body">
+		<div class="list">
+		    <div class="list_head clearfix">
+				<dl>
+
+				</dl>
+
+				    <input type="button" class="btnGreen" value=" 選んだ施設の場所を地図で確認" onclick="OpenMapWindow();">
+
+				    <input type="hidden" name="map_341007" value="http://maps.google.co.jp/maps?f=q&amp;hl=ja&amp;geocode=&amp;q=%e7%a6%8f%e5%b2%a1%e7%9c%8c%e7%b3%9f%e5%b1%8b%e9%83%a1%e5%ae%87%e7%be%8e%e7%94%ba%e8%8b%a5%e8%8d%89%e4%ba%8c%e4%b8%81%e7%9b%ae%ef%bc%91%e7%95%aa%ef%bc%92%e5%8f%b7">
+
+				    <input type="hidden" name="map_341009" value="http://maps.google.co.jp/maps?f=q&amp;hl=ja&amp;geocode=&amp;q=%e7%a6%8f%e5%b2%a1%e7%9c%8c%e7%b3%9f%e5%b1%8b%e9%83%a1%e5%ae%87%e7%be%8e%e7%94%ba%e3%82%86%e3%82%8a%e3%81%8c%e4%b8%98%e4%b8%80%e4%b8%81%e7%9b%ae%ef%bc%93%e7%95%aa%ef%bc%91%e5%8f%b7">
+
+				    <input type="hidden" name="map_341014" value="http://maps.google.co.jp/maps?f=q&amp;hl=ja&amp;geocode=&amp;q=%e7%a6%8f%e5%b2%a1%e7%9c%8c%e7%b3%9f%e5%b1%8b%e9%83%a1%e5%ae%87%e7%be%8e%e7%94%ba%e5%ae%87%e7%be%8e%e4%ba%94%e4%b8%81%e7%9b%ae%ef%bc%94%e7%95%aa%ef%bc%91%e5%8f%b7">
+
+				    <input type="hidden" name="map_341015" value="http://maps.google.co.jp/maps?f=q&amp;hl=ja&amp;geocode=&amp;q=%e7%a6%8f%e5%b2%a1%e7%9c%8c%e7%b3%9f%e5%b1%8b%e9%83%a1%e5%ae%87%e7%be%8e%e7%94%ba%e8%8b%a5%e8%8d%89%e4%ba%8c%e4%b8%81%e7%9b%ae%ef%bc%91%e7%95%aa%ef%bc%91%e5%8f%b7">
+
+				    <input type="hidden" name="map_341016" value="http://maps.google.co.jp/maps?f=q&amp;hl=ja&amp;geocode=&amp;q=%e7%a6%8f%e5%b2%a1%e7%9c%8c%e7%b3%9f%e5%b1%8b%e9%83%a1%e5%ae%87%e7%be%8e%e7%94%ba%e3%82%86%e3%82%8a%e3%81%8c%e4%b8%98%e4%b8%80%e4%b8%81%e7%9b%ae%ef%bc%91%e7%95%aa%ef%bc%91%e5%8f%b7">
+
+				    <input type="hidden" name="map_341017" value="http://maps.google.co.jp/maps?f=q&amp;hl=ja&amp;geocode=&amp;q=%e7%a6%8f%e5%b2%a1%e7%9c%8c%e7%b3%9f%e5%b1%8b%e9%83%a1%e5%ae%87%e7%be%8e%e7%94%ba%e5%ae%87%e7%be%8e%ef%bc%93%e4%b8%81%e7%9b%ae%ef%bc%99%e7%95%aa%ef%bc%91%e5%8f%b7">
+
+				    <input type="hidden" name="map_341018" value="http://maps.google.co.jp/maps?f=q&amp;hl=ja&amp;geocode=&amp;q=%e7%a6%8f%e5%b2%a1%e7%9c%8c%e7%b3%9f%e5%b1%8b%e9%83%a1%e5%ae%87%e7%be%8e%e7%94%ba%e5%ae%87%e7%be%8e%e6%9d%b1%ef%bc%93%e4%b8%81%e7%9b%ae%ef%bc%97%e7%95%aa%ef%bc%91%e5%8f%b7">
+
+				    <input type="hidden" name="map_341019" value="http://maps.google.co.jp/maps?f=q&amp;hl=ja&amp;geocode=&amp;q=%e7%a6%8f%e5%b2%a1%e7%9c%8c%e7%b3%9f%e5%b1%8b%e9%83%a1%e5%ae%87%e7%be%8e%e7%94%ba%e5%8e%9f%e7%94%b0%e4%b8%89%e4%b8%81%e7%9b%ae%ef%bc%91%e7%95%aa%ef%bc%91%e5%8f%b7">
+
+				    <input type="hidden" name="map_341020" value="http://maps.google.co.jp/maps?f=q&amp;hl=ja&amp;geocode=&amp;q=%e7%a6%8f%e5%b2%a1%e7%9c%8c%e7%b3%9f%e5%b1%8b%e9%83%a1%e5%ae%87%e7%be%8e%e7%94%ba%e6%a1%9c%e5%8e%9f%e4%b8%80%e4%b8%81%e7%9b%ae%ef%bc%91%e7%95%aa%ef%bc%91%e5%8f%b7">
+
+				    <input type="hidden" name="map_341021" value="http://maps.google.co.jp/maps?f=q&amp;hl=ja&amp;geocode=&amp;q=%e7%a6%8f%e5%b2%a1%e7%9c%8c%e7%b3%9f%e5%b1%8b%e9%83%a1%e5%ae%87%e7%be%8e%e7%94%ba%e5%a4%a7%e5%ad%97%e4%ba%95%e9%87%8e%ef%bc%94%ef%bc%91%ef%bc%99%e7%95%aa%e5%9c%b0%ef%bc%99">
+
+			</div>
+<!-- 明細情報設定start -->
+            <div id="ichiran">
+
+<table id="shisetsu" class="shisetsu">
+			   <thead>
+				<tr>
+					<th class="comment">お知らせ</th>
+					<th class="shisetsu">施設名<span>複数選択可</span></th>
+					<th class="info">案内/リンク</th>
+
+					<th class="equip">付帯設備</th>
+					<th class="detail">詳細</th>
+				</tr>
+			    </thead>
+		    <tbody id="shisetsutbl">
+
+         <tr>
+		     <td class="comment">
+
+             </td>
+
+            <td class="shisetsu toggle"><input type="checkbox" name="checkShisetsu" id="checkShisetsu341007" value="341007" onclick="showNextTip();"><label for="checkShisetsu341007" class="switch-off">宇美勤労者体育センター</label></td>
+
+			<td class="info">
+
+            <a href="http://www.town.umi.lg.jp/soshiki/12/kinnrousya.html" target="_blank" class="info">案内</a>
+
+            </td>
+
+<!-- 付帯設備情報設定 -->
+        	<td class="equip"><ul>
+
+           </ul></td>
+<!-- 付帯設備情報設定 -->
+<!-- 詳細設定 -->
+          <td class="detail"><a href="javascript:void(0);" onclick="var inst = $.remodal.lookup[$('[data-remodal-id=shisetsu007_detail]').data('remodal')];inst.open();"></a></td>
+<!-- 詳細設定 -->
+		</tr>
+
+         <tr class="even">
+		     <td class="comment">
+
+             </td>
+
+            <td class="shisetsu toggle"><input type="checkbox" name="checkShisetsu" id="checkShisetsu341009" value="341009" onclick="showNextTip();"><label for="checkShisetsu341009" class="switch-off">宇美南町民センター</label></td>
+
+			<td class="info">
+
+            <a href="http://www.town.umi.lg.jp/soshiki/12/umiminamityoumin.html" target="_blank" class="info">案内</a>
+
+            </td>
+
+<!-- 付帯設備情報設定 -->
+        	<td class="equip"><ul>
+
+           </ul></td>
+<!-- 付帯設備情報設定 -->
+<!-- 詳細設定 -->
+          <td class="detail"><a href="javascript:void(0);" onclick="var inst = $.remodal.lookup[$('[data-remodal-id=shisetsu009_detail]').data('remodal')];inst.open();"></a></td>
+<!-- 詳細設定 -->
+		</tr>
+
+         <tr>
+		     <td class="comment">
+
+             </td>
+
+            <td class="shisetsu toggle"><input type="checkbox" name="checkShisetsu" id="checkShisetsu341014" value="341014" onclick="showNextTip();"><label for="checkShisetsu341014" class="switch-off">宇美町立宇美中学校</label></td>
+
+			<td class="info">
+
+            </td>
+
+<!-- 付帯設備情報設定 -->
+        	<td class="equip"><ul>
+
+           </ul></td>
+<!-- 付帯設備情報設定 -->
+<!-- 詳細設定 -->
+          <td class="detail"><a href="javascript:void(0);" onclick="var inst = $.remodal.lookup[$('[data-remodal-id=shisetsu014_detail]').data('remodal')];inst.open();"></a></td>
+<!-- 詳細設定 -->
+		</tr>
+
+         <tr class="even">
+		     <td class="comment">
+
+             </td>
+
+            <td class="shisetsu toggle"><input type="checkbox" name="checkShisetsu" id="checkShisetsu341015" value="341015" onclick="showNextTip();"><label for="checkShisetsu341015" class="switch-off">宇美町立宇美東中学校</label></td>
+
+			<td class="info">
+
+            </td>
+
+<!-- 付帯設備情報設定 -->
+        	<td class="equip"><ul>
+
+           </ul></td>
+<!-- 付帯設備情報設定 -->
+<!-- 詳細設定 -->
+          <td class="detail"><a href="javascript:void(0);" onclick="var inst = $.remodal.lookup[$('[data-remodal-id=shisetsu015_detail]').data('remodal')];inst.open();"></a></td>
+<!-- 詳細設定 -->
+		</tr>
+
+         <tr>
+		     <td class="comment">
+
+             </td>
+
+            <td class="shisetsu toggle"><input type="checkbox" name="checkShisetsu" id="checkShisetsu341016" value="341016" onclick="showNextTip();"><label for="checkShisetsu341016" class="switch-off">宇美町立宇美南中学校</label></td>
+
+			<td class="info">
+
+            </td>
+
+<!-- 付帯設備情報設定 -->
+        	<td class="equip"><ul>
+
+           </ul></td>
+<!-- 付帯設備情報設定 -->
+<!-- 詳細設定 -->
+          <td class="detail"><a href="javascript:void(0);" onclick="var inst = $.remodal.lookup[$('[data-remodal-id=shisetsu016_detail]').data('remodal')];inst.open();"></a></td>
+<!-- 詳細設定 -->
+		</tr>
+
+         <tr class="even">
+		     <td class="comment">
+
+             </td>
+
+            <td class="shisetsu toggle"><input type="checkbox" name="checkShisetsu" id="checkShisetsu341017" value="341017" onclick="showNextTip();"><label for="checkShisetsu341017" class="switch-off">宇美町立宇美小学校</label></td>
+
+			<td class="info">
+
+            </td>
+
+<!-- 付帯設備情報設定 -->
+        	<td class="equip"><ul>
+
+           </ul></td>
+<!-- 付帯設備情報設定 -->
+<!-- 詳細設定 -->
+          <td class="detail"><a href="javascript:void(0);" onclick="var inst = $.remodal.lookup[$('[data-remodal-id=shisetsu017_detail]').data('remodal')];inst.open();"></a></td>
+<!-- 詳細設定 -->
+		</tr>
+
+         <tr>
+		     <td class="comment">
+
+             </td>
+
+            <td class="shisetsu toggle"><input type="checkbox" name="checkShisetsu" id="checkShisetsu341018" value="341018" onclick="showNextTip();"><label for="checkShisetsu341018" class="switch-off">宇美町立宇美東小学校</label></td>
+
+			<td class="info">
+
+            </td>
+
+<!-- 付帯設備情報設定 -->
+        	<td class="equip"><ul>
+
+           </ul></td>
+<!-- 付帯設備情報設定 -->
+<!-- 詳細設定 -->
+          <td class="detail"><a href="javascript:void(0);" onclick="var inst = $.remodal.lookup[$('[data-remodal-id=shisetsu018_detail]').data('remodal')];inst.open();"></a></td>
+<!-- 詳細設定 -->
+		</tr>
+
+         <tr class="even">
+		     <td class="comment">
+
+             </td>
+
+            <td class="shisetsu toggle"><input type="checkbox" name="checkShisetsu" id="checkShisetsu341019" value="341019" onclick="showNextTip();"><label for="checkShisetsu341019" class="switch-off">宇美町立原田小学校</label></td>
+
+			<td class="info">
+
+            </td>
+
+<!-- 付帯設備情報設定 -->
+        	<td class="equip"><ul>
+
+           </ul></td>
+<!-- 付帯設備情報設定 -->
+<!-- 詳細設定 -->
+          <td class="detail"><a href="javascript:void(0);" onclick="var inst = $.remodal.lookup[$('[data-remodal-id=shisetsu019_detail]').data('remodal')];inst.open();"></a></td>
+<!-- 詳細設定 -->
+		</tr>
+
+         <tr>
+		     <td class="comment">
+
+             </td>
+
+            <td class="shisetsu toggle"><input type="checkbox" name="checkShisetsu" id="checkShisetsu341020" value="341020" onclick="showNextTip();"><label for="checkShisetsu341020" class="switch-off">宇美町立桜原小学校</label></td>
+
+			<td class="info">
+
+            </td>
+
+<!-- 付帯設備情報設定 -->
+        	<td class="equip"><ul>
+
+           </ul></td>
+<!-- 付帯設備情報設定 -->
+<!-- 詳細設定 -->
+          <td class="detail"><a href="javascript:void(0);" onclick="var inst = $.remodal.lookup[$('[data-remodal-id=shisetsu020_detail]').data('remodal')];inst.open();"></a></td>
+<!-- 詳細設定 -->
+		</tr>
+
+         <tr class="even">
+		     <td class="comment">
+
+             </td>
+
+            <td class="shisetsu toggle"><input type="checkbox" name="checkShisetsu" id="checkShisetsu341021" value="341021" onclick="showNextTip();"><label for="checkShisetsu341021" class="switch-off">宇美町立井野小学校</label></td>
+
+			<td class="info">
+
+            </td>
+
+<!-- 付帯設備情報設定 -->
+        	<td class="equip"><ul>
+
+           </ul></td>
+<!-- 付帯設備情報設定 -->
+<!-- 詳細設定 -->
+          <td class="detail"><a href="javascript:void(0);" onclick="var inst = $.remodal.lookup[$('[data-remodal-id=shisetsu021_detail]').data('remodal')];inst.open();"></a></td>
+<!-- 詳細設定 -->
+		</tr>
+
+			</tbody>
+</table>
+
+            </div>
+<!-- 明細情報設定end -->
+            <input type="hidden" name="HyojiMode" id="HyojiMode" value="filterAll">
+	     </div>
+	  </div>
+
+  </div>
+  
+<div class="navbar">
+		<ul>
+
+            <li class="next"><a href="javascript:__doPostBack('next','')" class="btnBlue tooltipstered" id="btnNext">次へ進む</a></li>
+            <li class="prev"><a href="javascript:__doPostBack('prev','')" class="btnBlue">前に戻る</a></li>
+            <li class="menu"><a href="javascript:__doPostBack('menu','')" class="btnBlue">メニュー</a></li>
+		</ul>
+</div>
+
+</div>
+
+
+<!-- メッセージダイアログ -->
+
+
+<script type="text/javascript">
+    
+    $(document).ready(function () {
+        showMessageDialog('failure','エラー','施設を選んでください。','','');
+        $.remodal.lookup[$('[data-remodal-id=messageDlg]').data('remodal')].open();
+    });
+    
+    function showMessageDialog(style,title,message) {
+        showMessageDialog(style,title,message,"msgconfirm",null);
+    }
+    function showMessageDialog(style,title,message,confirmCmd,confirmArg) {
+        $("#messageDlg").removeClass().addClass('remodal ' + style);
+        $("#messageDlg h2").text(title);
+        $("#messageDlg div p").html(message);
+        $("#messageDlg ul").remove();
+        if (style=="notice") {
+            $("#messageDlg div").after(
+                "<ul class=\"clearfix\">" +
+                    "<li><input type=\"button\" class=\"btnSky remodal-confirm\" value=\"はい\" onclick=\"__doPostBack('"+confirmCmd+"','"+confirmArg+"');\"></li>" +
+                    "<li><input type=\"button\" class=\"btnSky remodal-cancel\" value=\"いいえ\" onclick=\"location.href='#';\"></li>" +
+                "</ul>");
+        }
+        location.href='#messageDlg';
+    };
+</script>
+
+<!--施設からのお知らせ-->
+
+<!-- 本日のおしらせ・詳細モーダル -->
+
+<!-- 本日の予定start -->
+
+            
+
+            
+
+            
+
+            
+
+            
+
+            
+
+            
+
+            
+
+            
+
+            
+
+<!-- 本日の予定end -->
+<!-- 詳細start -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- 詳細end -->  
+<!-- 登録済施設グループ照会 -->
+
+
+
+</form>
+
+
+<a class="blank tooltipstered"></a><div class="remodal-overlay"><div class="remodal nav" data-remodal-id="nav" style="visibility: visible;">
+	<h2>メニュー</h2>
+    
+	<ul>
+        
+	</ul>
+<a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="remodal-overlay" style="display: block;"><div class="remodal failure" id="messageDlg" data-remodal-id="messageDlg" style="visibility: visible;">
+    <h2>エラー</h2>
+    <div class="clearfix"><p>施設を選んでください。</p></div>
+<a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="remodal-overlay"><div class="remodal today" data-remodal-id="today_007" style="visibility: visible;">
+	            <h2>宇美勤労者体育センター<span>の本日の予定</span></h2>
+                <div class="item_wrap">
+
+		<div class="item">
+			<h3>体育館　全面</h3>
+			<dl class="clearfix"><dt>定員</dt><dd>なし</dd></dl><table>
+				<tbody><tr>
+			        <th>時間帯</th>
+			        <th>利用者</th>
+			        <th>予定</th>
+				</tr>
+
+				<tr>
+			        <td>9:00～13:00</td>
+			        <td>水鳥バドミントンクラブ</td>
+			        <td>練習</td>
+				</tr>
+
+				<tr>
+			        <td>13:00～16:00</td>
+			        <td>リターンズ</td>
+			        <td>練習</td>
+				</tr>
+
+				<tr>
+			        <td>16:00～18:30</td>
+			        <td>福岡キッズチアリーディングクラブ</td>
+			        <td>練習</td>
+				</tr>
+
+				<tr>
+			        <td>18:30～19:30</td>
+			        <td>メンテナンス</td>
+			        <td></td>
+				</tr>
+
+				<tr>
+			        <td>19:30～21:30</td>
+			        <td>個人使用</td>
+			        <td>練習</td>
+				</tr>
+
+			</tbody></table>
+		</div>
+
+    </div>
+<a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="remodal-overlay"><div class="remodal today" data-remodal-id="today_009" style="visibility: visible;">
+	            <h2>宇美南町民センター<span>の本日の予定</span></h2>
+                <div class="item_wrap">
+
+		<div class="item">
+			<h3>和室</h3>
+			<dl class="clearfix"><dt>定員</dt><dd>なし</dd></dl><table>
+				<tbody><tr>
+			        <th>時間帯</th>
+			        <th>利用者</th>
+			        <th>予定</th>
+				</tr>
+
+				<tr>
+			        <td>10:00～11:00</td>
+			        <td>個人使用</td>
+			        <td>サークル・教室</td>
+				</tr>
+
+			</tbody></table>
+		</div>
+
+		<div class="item">
+			<h3>研修室３</h3>
+			<dl class="clearfix"><dt>定員</dt><dd>なし</dd></dl><table>
+				<tbody><tr>
+			        <th>時間帯</th>
+			        <th>利用者</th>
+			        <th>予定</th>
+				</tr>
+
+				<tr>
+			        <td>10:30～12:30</td>
+			        <td>個人使用</td>
+			        <td>会議</td>
+				</tr>
+
+			</tbody></table>
+		</div>
+
+		<div class="item">
+			<h3>研修室４</h3>
+			<dl class="clearfix"><dt>定員</dt><dd>なし</dd></dl><table>
+				<tbody><tr>
+			        <th>時間帯</th>
+			        <th>利用者</th>
+			        <th>予定</th>
+				</tr>
+
+				<tr>
+			        <td>8:30～21:30</td>
+			        <td>地域行事</td>
+			        <td></td>
+				</tr>
+
+			</tbody></table>
+		</div>
+
+		<div class="item">
+			<h3>体育館　全面</h3>
+			<dl class="clearfix"><dt>定員</dt><dd>なし</dd></dl><table>
+				<tbody><tr>
+			        <th>時間帯</th>
+			        <th>利用者</th>
+			        <th>予定</th>
+				</tr>
+
+				<tr>
+			        <td>9:00～12:00</td>
+			        <td>宇美子ども体育クラブ</td>
+			        <td>練習</td>
+				</tr>
+
+				<tr>
+			        <td>12:00～15:00</td>
+			        <td>塚本チーム</td>
+			        <td>練習</td>
+				</tr>
+
+				<tr>
+			        <td>15:00～17:00</td>
+			        <td>個人使用</td>
+			        <td>練習</td>
+				</tr>
+
+				<tr>
+			        <td>17:00～19:00</td>
+			        <td>個人使用</td>
+			        <td>練習</td>
+				</tr>
+
+			</tbody></table>
+		</div>
+
+		<div class="item">
+			<h3>芝生広場</h3>
+			<dl class="clearfix"><dt>定員</dt><dd>なし</dd></dl><table>
+				<tbody><tr>
+			        <th>時間帯</th>
+			        <th>利用者</th>
+			        <th>予定</th>
+				</tr>
+
+				<tr>
+			        <td>18:00～21:30</td>
+			        <td>メンテナンス</td>
+			        <td></td>
+				</tr>
+
+			</tbody></table>
+		</div>
+
+    </div>
+<a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="remodal-overlay"><div class="remodal today" data-remodal-id="today_014" style="visibility: visible;">
+	            <h2>宇美町立宇美中学校<span>の本日の予定</span></h2>
+                <div class="item_wrap">
+
+		<div class="item">
+			<h3>体育館　全面</h3>
+			<dl class="clearfix"><dt>定員</dt><dd>なし</dd></dl><table>
+				<tbody><tr>
+			        <th>時間帯</th>
+			        <th>利用者</th>
+			        <th>予定</th>
+				</tr>
+
+				<tr>
+			        <td>8:30～21:30</td>
+			        <td>学校行事</td>
+			        <td></td>
+				</tr>
+
+			</tbody></table>
+		</div>
+
+		<div class="item">
+			<h3>グラウンド</h3>
+			<dl class="clearfix"><dt>定員</dt><dd>なし</dd></dl><table>
+				<tbody><tr>
+			        <th>時間帯</th>
+			        <th>利用者</th>
+			        <th>予定</th>
+				</tr>
+
+				<tr>
+			        <td>8:30～17:00</td>
+			        <td>学校行事</td>
+			        <td></td>
+				</tr>
+
+			</tbody></table>
+		</div>
+
+    </div>
+<a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="remodal-overlay"><div class="remodal today" data-remodal-id="today_015" style="visibility: visible;">
+	            <h2>宇美町立宇美東中学校<span>の本日の予定</span></h2>
+                <div class="item_wrap">
+
+		<div class="item">
+			<h3>体育館　ステージ側</h3>
+			<dl class="clearfix"><dt>定員</dt><dd>なし</dd></dl><table>
+				<tbody><tr>
+			        <th>時間帯</th>
+			        <th>利用者</th>
+			        <th>予定</th>
+				</tr>
+
+				<tr>
+			        <td>19:30～21:30</td>
+			        <td>クライシス</td>
+			        <td>練習</td>
+				</tr>
+
+			</tbody></table>
+		</div>
+
+		<div class="item">
+			<h3>体育館　倉庫側</h3>
+			<dl class="clearfix"><dt>定員</dt><dd>なし</dd></dl><table>
+				<tbody><tr>
+			        <th>時間帯</th>
+			        <th>利用者</th>
+			        <th>予定</th>
+				</tr>
+
+				<tr>
+			        <td>18:30～21:30</td>
+			        <td>個人使用</td>
+			        <td>練習</td>
+				</tr>
+
+			</tbody></table>
+		</div>
+
+		<div class="item">
+			<h3>体育館　全面</h3>
+			<dl class="clearfix"><dt>定員</dt><dd>なし</dd></dl><table>
+				<tbody><tr>
+			        <th>時間帯</th>
+			        <th>利用者</th>
+			        <th>予定</th>
+				</tr>
+
+				<tr>
+			        <td>8:30～18:30</td>
+			        <td>学校行事</td>
+			        <td></td>
+				</tr>
+
+			</tbody></table>
+		</div>
+
+		<div class="item">
+			<h3>グラウンド</h3>
+			<dl class="clearfix"><dt>定員</dt><dd>なし</dd></dl><table>
+				<tbody><tr>
+			        <th>時間帯</th>
+			        <th>利用者</th>
+			        <th>予定</th>
+				</tr>
+
+				<tr>
+			        <td>8:30～21:30</td>
+			        <td>学校行事</td>
+			        <td></td>
+				</tr>
+
+			</tbody></table>
+		</div>
+
+    </div>
+<a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="remodal-overlay"><div class="remodal today" data-remodal-id="today_016" style="visibility: visible;">
+	            <h2>宇美町立宇美南中学校<span>の本日の予定</span></h2>
+                <div class="item_wrap">
+
+		<div class="item">
+			<h3>体育館　全面</h3>
+			<dl class="clearfix"><dt>定員</dt><dd>なし</dd></dl><table>
+				<tbody><tr>
+			        <th>時間帯</th>
+			        <th>利用者</th>
+			        <th>予定</th>
+				</tr>
+
+				<tr>
+			        <td>7:30～19:00</td>
+			        <td>学校行事</td>
+			        <td></td>
+				</tr>
+
+				<tr>
+			        <td>19:30～20:00</td>
+			        <td>メンテナンス</td>
+			        <td></td>
+				</tr>
+
+				<tr>
+			        <td>20:00～22:00</td>
+			        <td>Ｆ－Ｖｉｇｏｒ</td>
+			        <td>練習</td>
+				</tr>
+
+			</tbody></table>
+		</div>
+
+		<div class="item">
+			<h3>武道場</h3>
+			<dl class="clearfix"><dt>定員</dt><dd>なし</dd></dl><table>
+				<tbody><tr>
+			        <th>時間帯</th>
+			        <th>利用者</th>
+			        <th>予定</th>
+				</tr>
+
+				<tr>
+			        <td>7:30～19:00</td>
+			        <td>学校行事</td>
+			        <td></td>
+				</tr>
+
+				<tr>
+			        <td>19:30～21:30</td>
+			        <td>日本実践空手道連盟　極誠会</td>
+			        <td>練習</td>
+				</tr>
+
+			</tbody></table>
+		</div>
+
+		<div class="item">
+			<h3>グラウンド</h3>
+			<dl class="clearfix"><dt>定員</dt><dd>なし</dd></dl><table>
+				<tbody><tr>
+			        <th>時間帯</th>
+			        <th>利用者</th>
+			        <th>予定</th>
+				</tr>
+
+				<tr>
+			        <td>8:30～21:30</td>
+			        <td>学校行事</td>
+			        <td></td>
+				</tr>
+
+			</tbody></table>
+		</div>
+
+    </div>
+<a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="remodal-overlay"><div class="remodal today" data-remodal-id="today_017" style="visibility: visible;">
+	            <h2>宇美町立宇美小学校<span>の本日の予定</span></h2>
+                <div class="item_wrap">
+
+		<div class="item">
+			<h3>体育館　ステージ側</h3>
+			<dl class="clearfix"><dt>定員</dt><dd>なし</dd></dl><table>
+				<tbody><tr>
+			        <th>時間帯</th>
+			        <th>利用者</th>
+			        <th>予定</th>
+				</tr>
+
+				<tr>
+			        <td>19:30～21:30</td>
+			        <td>個人使用</td>
+			        <td>練習</td>
+				</tr>
+
+			</tbody></table>
+		</div>
+
+		<div class="item">
+			<h3>体育館　入口側</h3>
+			<dl class="clearfix"><dt>定員</dt><dd>なし</dd></dl><table>
+				<tbody><tr>
+			        <th>時間帯</th>
+			        <th>利用者</th>
+			        <th>予定</th>
+				</tr>
+
+				<tr>
+			        <td>19:30～20:00</td>
+			        <td>メンテナンス</td>
+			        <td></td>
+				</tr>
+
+				<tr>
+			        <td>20:00～22:00</td>
+			        <td>ドルフィンズ３４</td>
+			        <td>練習</td>
+				</tr>
+
+			</tbody></table>
+		</div>
+
+		<div class="item">
+			<h3>体育館　全面</h3>
+			<dl class="clearfix"><dt>定員</dt><dd>なし</dd></dl><table>
+				<tbody><tr>
+			        <th>時間帯</th>
+			        <th>利用者</th>
+			        <th>予定</th>
+				</tr>
+
+				<tr>
+			        <td>9:00～18:00</td>
+			        <td>ＳＴＡＮＤＡＲＤＳ　Ｊｒ</td>
+			        <td>練習</td>
+				</tr>
+
+				<tr>
+			        <td>18:00～19:30</td>
+			        <td>個人使用</td>
+			        <td>練習</td>
+				</tr>
+
+			</tbody></table>
+		</div>
+
+		<div class="item">
+			<h3>グラウンド</h3>
+			<dl class="clearfix"><dt>定員</dt><dd>なし</dd></dl><table>
+				<tbody><tr>
+			        <th>時間帯</th>
+			        <th>利用者</th>
+			        <th>予定</th>
+				</tr>
+
+				<tr>
+			        <td>9:00～15:00</td>
+			        <td>桜原ＦＣ</td>
+			        <td>サッカー</td>
+				</tr>
+
+				<tr>
+			        <td>15:00～18:00</td>
+			        <td>ＳＴＡＮＤＡＲＤＳ　Ｊｒ</td>
+			        <td>練習</td>
+				</tr>
+
+			</tbody></table>
+		</div>
+
+    </div>
+<a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="remodal-overlay"><div class="remodal today" data-remodal-id="today_018" style="visibility: visible;">
+	            <h2>宇美町立宇美東小学校<span>の本日の予定</span></h2>
+                <div class="item_wrap">
+
+		<div class="item">
+			<h3>体育館　全面</h3>
+			<dl class="clearfix"><dt>定員</dt><dd>なし</dd></dl><table>
+				<tbody><tr>
+			        <th>時間帯</th>
+			        <th>利用者</th>
+			        <th>予定</th>
+				</tr>
+
+				<tr>
+			        <td>8:30～21:00</td>
+			        <td>メンテナンス</td>
+			        <td></td>
+				</tr>
+
+			</tbody></table>
+		</div>
+
+		<div class="item">
+			<h3>グラウンド</h3>
+			<dl class="clearfix"><dt>定員</dt><dd>なし</dd></dl><table>
+				<tbody><tr>
+			        <th>時間帯</th>
+			        <th>利用者</th>
+			        <th>予定</th>
+				</tr>
+
+				<tr>
+			        <td>8:30～12:00</td>
+			        <td>ふみの里スポーツクラブ</td>
+			        <td>サッカー</td>
+				</tr>
+
+				<tr>
+			        <td>14:00～18:00</td>
+			        <td>宇美ジュニアサッカークラブ</td>
+			        <td>練習</td>
+				</tr>
+
+			</tbody></table>
+		</div>
+
+    </div>
+<a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="remodal-overlay"><div class="remodal today" data-remodal-id="today_019" style="visibility: visible;">
+	            <h2>宇美町立原田小学校<span>の本日の予定</span></h2>
+                <div class="item_wrap">
+
+		<div class="item">
+			<h3>体育館　ステージ側</h3>
+			<dl class="clearfix"><dt>定員</dt><dd>なし</dd></dl><table>
+				<tbody><tr>
+			        <th>時間帯</th>
+			        <th>利用者</th>
+			        <th>予定</th>
+				</tr>
+
+				<tr>
+			        <td>19:30～21:30</td>
+			        <td>Ａｍｕｓｅ</td>
+			        <td>練習</td>
+				</tr>
+
+			</tbody></table>
+		</div>
+
+		<div class="item">
+			<h3>体育館　入口側</h3>
+			<dl class="clearfix"><dt>定員</dt><dd>なし</dd></dl><table>
+				<tbody><tr>
+			        <th>時間帯</th>
+			        <th>利用者</th>
+			        <th>予定</th>
+				</tr>
+
+				<tr>
+			        <td>19:30～21:30</td>
+			        <td>Ａｍｕｓｅ</td>
+			        <td>練習</td>
+				</tr>
+
+			</tbody></table>
+		</div>
+
+		<div class="item">
+			<h3>グラウンド</h3>
+			<dl class="clearfix"><dt>定員</dt><dd>なし</dd></dl><table>
+				<tbody><tr>
+			        <th>時間帯</th>
+			        <th>利用者</th>
+			        <th>予定</th>
+				</tr>
+
+				<tr>
+			        <td>8:30～18:00</td>
+			        <td>原田フットボールクラブ</td>
+			        <td>練習</td>
+				</tr>
+
+			</tbody></table>
+		</div>
+
+    </div>
+<a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="remodal-overlay"><div class="remodal today" data-remodal-id="today_020" style="visibility: visible;">
+	            <h2>宇美町立桜原小学校<span>の本日の予定</span></h2>
+                <div class="item_wrap">
+
+		<div class="item">
+			<h3>体育館　全面</h3>
+			<dl class="clearfix"><dt>定員</dt><dd>なし</dd></dl><table>
+				<tbody><tr>
+			        <th>時間帯</th>
+			        <th>利用者</th>
+			        <th>予定</th>
+				</tr>
+
+				<tr>
+			        <td>8:00～9:00</td>
+			        <td>さくらＷｉｎｇ</td>
+			        <td>練習試合</td>
+				</tr>
+
+				<tr>
+			        <td>9:00～13:00</td>
+			        <td>さくらＷｉｎｇ</td>
+			        <td>練習</td>
+				</tr>
+
+				<tr>
+			        <td>13:00～16:00</td>
+			        <td>個人使用</td>
+			        <td>練習</td>
+				</tr>
+
+				<tr>
+			        <td>16:00～19:00</td>
+			        <td>桜原ミニバスケットボールクラブ</td>
+			        <td>練習</td>
+				</tr>
+
+				<tr>
+			        <td>19:00～21:30</td>
+			        <td>ＡＭＯＲＥ</td>
+			        <td>練習</td>
+				</tr>
+
+			</tbody></table>
+		</div>
+
+		<div class="item">
+			<h3>グラウンド</h3>
+			<dl class="clearfix"><dt>定員</dt><dd>なし</dd></dl><table>
+				<tbody><tr>
+			        <th>時間帯</th>
+			        <th>利用者</th>
+			        <th>予定</th>
+				</tr>
+
+				<tr>
+			        <td>8:30～18:00</td>
+			        <td>ＳＴＡＮＤＡＲＤＳ　Ｊｒ</td>
+			        <td>練習</td>
+				</tr>
+
+			</tbody></table>
+		</div>
+
+    </div>
+<a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="remodal-overlay"><div class="remodal today" data-remodal-id="today_021" style="visibility: visible;">
+	            <h2>宇美町立井野小学校<span>の本日の予定</span></h2>
+                <div class="item_wrap">
+
+		<div class="item">
+			<h3>体育館　全面</h3>
+			<dl class="clearfix"><dt>定員</dt><dd>なし</dd></dl><table>
+				<tbody><tr>
+			        <th>時間帯</th>
+			        <th>利用者</th>
+			        <th>予定</th>
+				</tr>
+
+				<tr>
+			        <td>9:00～12:00</td>
+			        <td>ＳＥＥＫＥＲＳ</td>
+			        <td>練習</td>
+				</tr>
+
+				<tr>
+			        <td>16:30～19:30</td>
+			        <td>宇美ドリームダンカーズ</td>
+			        <td>練習</td>
+				</tr>
+
+				<tr>
+			        <td>19:30～20:00</td>
+			        <td>メンテナンス</td>
+			        <td></td>
+				</tr>
+
+				<tr>
+			        <td>20:00～22:00</td>
+			        <td>ＭＡＸ</td>
+			        <td>練習</td>
+				</tr>
+
+			</tbody></table>
+		</div>
+
+		<div class="item">
+			<h3>グラウンド</h3>
+			<dl class="clearfix"><dt>定員</dt><dd>なし</dd></dl><table>
+				<tbody><tr>
+			        <th>時間帯</th>
+			        <th>利用者</th>
+			        <th>予定</th>
+				</tr>
+
+				<tr>
+			        <td>8:30～18:00</td>
+			        <td>宇美ジャイアンツ</td>
+			        <td>練習</td>
+				</tr>
+
+				<tr>
+			        <td>20:00～21:30</td>
+			        <td>井野クラブ</td>
+			        <td>練習</td>
+				</tr>
+
+			</tbody></table>
+		</div>
+
+    </div>
+<a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="remodal-overlay"><div class="remodal detail" data-remodal-id="shisetsu007_detail" style="visibility: visible;">
+	<h2>宇美勤労者体育センター</h2>
+	<ul class="clearfix">
+
+        <li class="info"><a href="http://www.town.umi.lg.jp/soshiki/12/kinnrousya.html" target="_blank" class="btnGreen">案内</a></li>
+
+	</ul>
+
+<a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="remodal-overlay"><div class="remodal detail" data-remodal-id="shisetsu009_detail" style="visibility: visible;">
+	<h2>宇美南町民センター</h2>
+	<ul class="clearfix">
+
+        <li class="info"><a href="http://www.town.umi.lg.jp/soshiki/12/umiminamityoumin.html" target="_blank" class="btnGreen">案内</a></li>
+
+	</ul>
+
+<a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="remodal-overlay"><div class="remodal detail" data-remodal-id="shisetsu014_detail" style="visibility: visible;">
+	<h2>宇美町立宇美中学校</h2>
+	<ul class="clearfix">
+
+	</ul>
+
+<a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="remodal-overlay"><div class="remodal detail" data-remodal-id="shisetsu015_detail" style="visibility: visible;">
+	<h2>宇美町立宇美東中学校</h2>
+	<ul class="clearfix">
+
+	</ul>
+
+<a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="remodal-overlay"><div class="remodal detail" data-remodal-id="shisetsu016_detail" style="visibility: visible;">
+	<h2>宇美町立宇美南中学校</h2>
+	<ul class="clearfix">
+
+	</ul>
+
+<a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="remodal-overlay"><div class="remodal detail" data-remodal-id="shisetsu017_detail" style="visibility: visible;">
+	<h2>宇美町立宇美小学校</h2>
+	<ul class="clearfix">
+
+	</ul>
+
+<a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="remodal-overlay"><div class="remodal detail" data-remodal-id="shisetsu018_detail" style="visibility: visible;">
+	<h2>宇美町立宇美東小学校</h2>
+	<ul class="clearfix">
+
+	</ul>
+
+<a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="remodal-overlay"><div class="remodal detail" data-remodal-id="shisetsu019_detail" style="visibility: visible;">
+	<h2>宇美町立原田小学校</h2>
+	<ul class="clearfix">
+
+	</ul>
+
+<a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="remodal-overlay"><div class="remodal detail" data-remodal-id="shisetsu020_detail" style="visibility: visible;">
+	<h2>宇美町立桜原小学校</h2>
+	<ul class="clearfix">
+
+	</ul>
+
+<a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="remodal-overlay"><div class="remodal detail" data-remodal-id="shisetsu021_detail" style="visibility: visible;">
+	<h2>宇美町立井野小学校</h2>
+	<ul class="clearfix">
+
+	</ul>
+
+<a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="remodal-overlay"><div class="remodal shisetsu_group none" data-remodal-id="shisetsuGroup" style="visibility: visible;">
+	<h2>登録済施設グループ</h2>
+	<div>
+<p>登録している施設グループはありません</p>
+
+	</div>
+<a href="javascript:void(0);" class="remodal-close"></a></div></div><div class="tooltipster-base blank tooltipster-fade tooltipster-fade-show" style="transition-duration: 350ms; animation-duration: 350ms; top: 843px; left: 0px;"><div class="tooltipster-content"></div><div class="tooltipster-arrow-top tooltipster-arrow" style="left:-10px;"><span style="border-color:rgba(0, 0, 0, 0);"></span></div></div></body></html>
