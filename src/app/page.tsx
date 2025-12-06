@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { format } from 'date-fns';
 import SearchForm from '@/components/SearchForm';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ErrorMessage from '@/components/ui/ErrorMessage';
@@ -35,7 +36,7 @@ export default function Home() {
     try {
       // SearchParamsからScrapeRequestに変換（Date[] → string[]）
       const request: ScrapeRequest = {
-        dates: params.dates.map((date) => date.toISOString().split('T')[0]), // YYYY-MM-DD形式
+        dates: params.dates.map((date) => format(date, 'yyyy-MM-dd')), // YYYY-MM-DD形式（ローカル時刻）
         timeRange: params.timeRange,
       };
 

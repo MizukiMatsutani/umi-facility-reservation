@@ -4,6 +4,7 @@
 
 | 日付 | バージョン | 変更内容 |
 |------|-----------|---------|
+| 2025-12-06 | 2.1 | タイムゾーン問題とStep 4のページ構造を修正 |
 | 2025-12-06 | 2.0 | 完全な調査結果を基に全面改訂 |
 | 2025-12-06 | 1.0 | 初版作成 |
 
@@ -238,56 +239,102 @@ value="2025121100701   0"
 
 ### ページ構造
 
-- 各施設ごとにテーブルが表示される
-- 施設内のコートごとに行が分かれる
-  - 例: 「倉庫側」「ステージ側」「全面」「入口側」
-- 横スクロール可能な時間帯リスト（30分刻み）
+**重要**: 当初の想定とは異なる構造でした。
+
+- 各`.item`要素が1つの施設を表す
+- 各施設内に**複数のカレンダーテーブル**が存在
+  - 各カレンダーテーブルは**1つの日付**の時間帯データを表示
+  - カレンダーのヘッダー（`th.shisetsu`）に日付が含まれる（例: "2025年12月11日(水)"）
+- 時間帯は横スクロール可能（8:30～22:00、30分刻み）
+- tbody の各行が1つのコート（例: "体育館 全面"、"体育館 ステージ側"）
+
+### HTML構造例
+
+```html
+<div class="item">
+  <h3>宇美勤労者体育センター</h3>
+
+  <h4>体育館</h4>
+  <table class="calendar">
+    <thead>
+      <tr>
+        <th class="shisetsu">2025年12月11日(水)</th>
+        <th class="teiin">定員</th>
+        <th>8:30～9:00</th>
+        <th>9:00～9:30</th>
+        <!-- ... -->
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="shisetsu">体育館 全面</td>
+        <td>100</td>
+        <td><label>○</label></td>
+        <td><label>×</label></td>
+        <!-- ... -->
+      </tr>
+    </tbody>
+  </table>
+</div>
+```
 
 ### データ取得手順
 
-1. **各施設のカレンダーを取得**
+1. **各施設のカレンダーテーブルを取得**
    ```typescript
-   const calendars = document.querySelectorAll('.item .calendar');
-   ```
+   const items = document.querySelectorAll('.item');
 
-2. **施設ごとにコート情報を取得**
-   ```typescript
-   interface Court {
-     name: string;        // 例: "体育館　全面"
-     timeSlots: TimeSlot[];
-   }
+   items.forEach(item => {
+     const facilityName = item.querySelector('h3')?.textContent?.trim();
+     const calendars = item.querySelectorAll('.calendar');
 
-   const courts: Court[] = [];
-   const rows = calendar.querySelectorAll('tr');
+     // 各カレンダーが1日分のデータ
+     calendars.forEach(calendar => {
+       // 日付をヘッダーから取得
+       const dateHeader = calendar.querySelector('thead th.shisetsu');
+       const dateText = dateHeader?.textContent?.trim(); // "2025年12月11日(水)"
 
-   rows.forEach(row => {
-     const courtName = row.querySelector('.shisetsu')?.textContent?.trim();
-     const cells = row.querySelectorAll('td label');
+       // 日付を抽出
+       const dateMatch = dateText.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+       const [_, year, month, day] = dateMatch;
+       const dateStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 
-     const timeSlots = Array.from(cells).map((label, index) => ({
-       time: getTimeSlot(index), // "8:30-9:00"
-       available: label.textContent?.trim() === '○'
-     }));
-
-     courts.push({ name: courtName, timeSlots });
+       // ... 時間帯データを取得
+     });
    });
    ```
 
-3. **時刻の計算**
+2. **時間帯データの取得**
    ```typescript
-   function getTimeSlot(index: number): string {
-     const startHour = 8;
-     const startMinute = 30;
+   // 時間帯ヘッダーを取得（"8:30～9:00"形式）
+   const timeHeaders = Array.from(
+     calendar.querySelectorAll('thead th')
+   ).slice(2); // 最初の2つは「日付」と「定員」
 
-     const totalMinutes = startHour * 60 + startMinute + index * 30;
-     const hour = Math.floor(totalMinutes / 60);
-     const minute = totalMinutes % 60;
+   // コート行を取得
+   const rows = Array.from(calendar.querySelectorAll('tbody tr'));
 
-     const nextHour = Math.floor((totalMinutes + 30) / 60);
-     const nextMinute = (totalMinutes + 30) % 60;
+   // 各時間帯の空き状況を確認
+   const slots = timeHeaders.map((th, index) => {
+     const timeText = th.textContent?.trim(); // "8:30～9:00"
+     const time = timeText.replace('～', '-').replace(/\s/g, ''); // "8:30-9:00"
 
-     return `${hour}:${String(minute).padStart(2, '0')}-${nextHour}:${String(nextMinute).padStart(2, '0')}`;
-   }
+     // どれか1つのコートでも○があれば空きありとする
+     let available = false;
+     for (const row of rows) {
+       const cells = Array.from(row.querySelectorAll('td'));
+       const cell = cells[index + 2]; // 最初の2つは施設名と定員
+       const label = cell?.querySelector('label');
+       const status = label?.textContent?.trim();
+
+       if (status === '○') {
+         available = true;
+         break;
+       }
+     }
+
+     return { time, available };
+   });
    ```
 
 ### セレクタ一覧
@@ -411,6 +458,12 @@ await scrapeAvailability();
 4. **施設は全選択が前提**
    - 現在の設計では全施設を選択する
 
+5. **日付のタイムゾーン問題に注意**
+   - `Date.toISOString()`はUTC時刻を返すため、日本時間（UTC+9）で日付が1日ずれる
+   - **必ず`date-fns`の`format(date, 'yyyy-MM-dd')`を使用すること**
+   - ❌ NG: `date.toISOString().split('T')[0]` → UTC変換により日付がずれる
+   - ✅ OK: `format(date, 'yyyy-MM-dd')` → ローカルタイムで正しい日付
+
 ---
 
 ## 今後の改善案
@@ -431,5 +484,5 @@ await scrapeAvailability();
 ---
 
 **作成者**: Claude (AI Assistant)
-**バージョン**: 2.0
+**バージョン**: 2.1
 **最終更新**: 2025-12-06

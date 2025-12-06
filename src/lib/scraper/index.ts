@@ -6,6 +6,7 @@
  */
 
 import puppeteer, { Browser, Page } from 'puppeteer';
+import { format } from 'date-fns';
 import type {
   Facility,
   AvailabilityData,
@@ -485,16 +486,44 @@ export class FacilityScraper {
         timeout: 10000,
       });
 
+      // デバッグ: Phase 2のスクリーンショットを保存
+      await page.screenshot({ path: 'debug-phase2-calendar.png', fullPage: true });
+      console.log('📸 Phase 2のスクリーンショットを保存しました');
+
       // 対象日付をYYYYMMDD形式に変換
       const targetDateStrings = dates.map((date) => format(date, 'yyyyMMdd'));
+      console.log('🎯 選択対象の日付:', targetDateStrings);
+
+      // デバッグ: 利用可能な日付チェックボックスを確認
+      const availableDates = await page.evaluate(() => {
+        const checkboxes = Array.from(
+          document.querySelectorAll('input[type="checkbox"][name="checkdate"]')
+        ) as HTMLInputElement[];
+
+        return checkboxes.map((checkbox) => {
+          const checkboxDate = checkbox.value.substring(0, 8);
+          const label = document.querySelector(`label[for="${checkbox.id}"]`);
+          const status = label?.textContent?.trim() || '';
+          
+          return {
+            date: checkboxDate,
+            status: status,
+            value: checkbox.value,
+            id: checkbox.id,
+          };
+        });
+      });
+      
+      console.log('📅 利用可能な日付チェックボックス:', JSON.stringify(availableDates, null, 2));
 
       // 日付を選択
-      const selectedCount = await page.evaluate((targetDates) => {
+      const result = await page.evaluate((targetDates) => {
         const checkboxes = Array.from(
           document.querySelectorAll('input[type="checkbox"][name="checkdate"]')
         ) as HTMLInputElement[];
 
         let count = 0;
+        const selectedDates: string[] = [];
 
         checkboxes.forEach((checkbox) => {
           // valueの最初の8文字が日付（YYYYMMDD）
@@ -514,21 +543,21 @@ export class FacilityScraper {
               if (status === '○' || status === '△') {
                 label.click();
                 count++;
-              } else {
-                console.log(`⏭️  ${checkboxDate}: ${status} - スキップ`);
+                selectedDates.push(checkboxDate);
               }
             }
           }
         });
 
-        return count;
+        return { count, selectedDates };
       }, targetDateStrings);
 
-      if (selectedCount === 0) {
+      console.log('✅ 選択された日付:', result.selectedDates);
+      console.log(`✅ ${result.count}日を選択しました`);
+
+      if (result.count === 0) {
         throw new Error('選択可能な日付がありません（全て×、－、または休の可能性があります）');
       }
-
-      console.log(`✅ ${selectedCount}日を選択しました`);
 
       // DOM更新を待機
       await new Promise((resolve) => setTimeout(resolve, 500));
@@ -585,83 +614,84 @@ export class FacilityScraper {
       // 全施設のデータを取得
       const facilitiesData = await page.evaluate((targetDates: string[]) => {
         const items = Array.from(document.querySelectorAll('.item'));
-        
+
         return items.map((item) => {
           // 施設名を取得
           const facilityNameElement = item.querySelector('h3');
           const facilityName = facilityNameElement?.textContent?.trim() || '';
 
-          // カレンダーテーブルを取得
-          const calendar = item.querySelector('.calendar');
-          if (!calendar) {
-            return null;
-          }
+          // この施設内のすべてのカレンダーテーブルを取得
+          const calendars = Array.from(item.querySelectorAll('.calendar')) as HTMLTableElement[];
 
-          // 日付ヘッダーを取得（横スクロール可能なので全て取得）
-          const dateHeaders = Array.from(
-            calendar.querySelectorAll('thead th')
-          ).slice(1); // 最初のthは「施設」列なのでスキップ
-
-          // 各コート（行）のデータを取得
-          const rows = Array.from(calendar.querySelectorAll('tbody tr'));
-          
-          // 日付ごとにデータを整理
-          const dateAvailability = targetDates.map((dateStr) => {
-            // この日付のカラムインデックスを探す
-            const dateIndex = dateHeaders.findIndex((th) => {
-              const headerText = th.textContent?.trim() || '';
-              // ヘッダーは "12/11" のような形式
-              const match = headerText.match(/(\d+)\/(\d+)/);
-              if (!match) return false;
-              
-              const [_, month, day] = match;
-              const headerDateStr = `${new Date().getFullYear()}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-              return headerDateStr === dateStr;
-            });
-
-            if (dateIndex === -1) {
+          // 各カレンダーからデータを抽出
+          const dateAvailability = calendars.map((calendar) => {
+            // 日付ヘッダーから日付を取得
+            const dateHeader = calendar.querySelector('thead th.shisetsu');
+            const dateText = dateHeader?.textContent?.trim() || '';
+            
+            // "2025年12月10日(水)" のような形式から日付を抽出
+            const dateMatch = dateText.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+            if (!dateMatch) {
               return null;
             }
 
-            // 各コートの時間帯データを取得
-            const courts = rows.map((row) => {
-              const courtNameElement = row.querySelector('.shisetsu');
-              const courtName = courtNameElement?.textContent?.trim() || '';
+            const [_, year, month, day] = dateMatch;
+            const dateStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 
-              // この日付の列のセルを全て取得
-              const cells = Array.from(row.querySelectorAll('td')).slice(1); // 最初のtdは施設名なのでスキップ
-              const dateCells = cells.slice(dateIndex * 28, (dateIndex + 1) * 28); // 1日あたり28コマ（8:30-22:00, 30分刻み）
+            // この日付が対象日付に含まれているか確認
+            if (!targetDates.includes(dateStr)) {
+              return null;
+            }
 
-              const timeSlots = dateCells.map((cell, index) => {
-                const label = cell.querySelector('label');
-                const status = label?.textContent?.trim() || '';
+            // コート名を取得（カレンダーの直前のh4要素）
+            let courtName = '';
+            let currentElement = calendar.parentElement;
+            while (currentElement && currentElement !== item) {
+              const h4 = currentElement.querySelector('h4');
+              if (h4) {
+                courtName = h4.textContent?.trim() || '';
+                break;
+              }
+              currentElement = currentElement.parentElement;
+            }
 
-                // 時刻を計算（8:30開始、30分刻み）
-                const startMinutes = 8 * 60 + 30 + index * 30;
-                const startHour = Math.floor(startMinutes / 60);
-                const startMin = startMinutes % 60;
-                
-                const endMinutes = startMinutes + 30;
-                const endHour = Math.floor(endMinutes / 60);
-                const endMin = endMinutes % 60;
+            // 時間帯のヘッダーを取得（"8:30～9:00"のような形式）
+            const timeHeaders = Array.from(
+              calendar.querySelectorAll('thead th')
+            ).slice(2); // 最初の2つは「日付」と「定員」なのでスキップ
 
-                const time = `${startHour}:${String(startMin).padStart(2, '0')}-${endHour}:${String(endMin).padStart(2, '0')}`;
+            // tbody の行を取得（各行が1つのコートまたは区分）
+            const rows = Array.from(calendar.querySelectorAll('tbody tr'));
 
-                return {
-                  time,
-                  available: status === '○',
-                };
-              });
+            // 時間帯データを取得
+            const slots = timeHeaders.map((th, index) => {
+              const timeText = th.textContent?.trim() || '';
+              // "8:30～9:00" を "8:30-9:00" に変換
+              const time = timeText.replace('～', '-').replace(/\s/g, '');
 
-              return {
-                name: courtName,
-                timeSlots,
-              };
+              // この時間帯の空き状況を確認（どれか1つの行でも○があれば空きありとする）
+              let available = false;
+              for (const row of rows) {
+                const cells = Array.from(row.querySelectorAll('td'));
+                // 最初の2つは施設名と定員なのでスキップ
+                const cell = cells[index + 2];
+                if (cell) {
+                  const label = cell.querySelector('label');
+                  const status = label?.textContent?.trim() || '';
+                  if (status === '○') {
+                    available = true;
+                    break;
+                  }
+                }
+              }
+
+              return { time, available };
             });
 
             return {
               date: dateStr,
-              courts,
+              courtName,
+              slots,
             };
           }).filter(Boolean);
 
@@ -677,34 +707,17 @@ export class FacilityScraper {
         .filter((data): data is NonNullable<typeof data> => data !== null)
         .map((data, index) => {
           const facility: Facility = {
-            id: `facility-${index}`, // TODO: 実際の施設IDを取得
+            id: `facility-${index}`,
             name: data.facilityName,
-            type: 'basketball', // TODO: 施設タイプの判別
+            type: 'basketball',
           };
 
           const availability: AvailabilityData[] = data.dateAvailability
             .filter((d): d is NonNullable<typeof d> => d !== null)
-            .map((dateData) => {
-              // コートごとの時間帯データを統合
-              // 複数コートある場合は、どれか1つでも空いていれば空きありとする
-              const allTimeSlots = dateData.courts.flatMap((court) => court.timeSlots);
-              const timeSlotMap = new Map<string, boolean>();
-
-              allTimeSlots.forEach((slot) => {
-                const current = timeSlotMap.get(slot.time);
-                // どれか1つでも空いていれば空きありとする
-                timeSlotMap.set(slot.time, current === undefined ? slot.available : current || slot.available);
-              });
-
-              const slots: TimeSlot[] = Array.from(timeSlotMap.entries()).map(
-                ([time, available]) => ({ time, available })
-              );
-
-              return {
-                date: new Date(dateData.date),
-                slots,
-              };
-            });
+            .map((dateData) => ({
+              date: new Date(dateData.date),
+              slots: dateData.slots,
+            }));
 
           return {
             facility,
@@ -713,6 +726,18 @@ export class FacilityScraper {
         });
 
       console.log(`✅ ${results.length}施設のデータを取得しました`);
+
+      // 詳細ログ: 各施設のデータ内容を確認
+      results.forEach((result, i) => {
+        const totalSlots = result.availability.reduce((sum, avail) => sum + avail.slots.length, 0);
+        const availableSlots = result.availability.reduce(
+          (sum, avail) => sum + avail.slots.filter((s) => s.available).length,
+          0
+        );
+        console.log(
+          `📊 施設${i + 1} (${result.facility.name}): 日付数=${result.availability.length}, 総時間帯数=${totalSlots}, 空き=${availableSlots}`
+        );
+      });
 
       return results;
     } catch (error) {
