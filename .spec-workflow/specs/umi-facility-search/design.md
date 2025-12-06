@@ -1,5 +1,13 @@
 # Design Document
 
+## 更新履歴
+
+| 日付 | バージョン | 変更内容 |
+|------|-----------|---------|
+| 2025-12-07 | 2.1 | タイムゾーン制約の追加、Step 4ページ構造の詳細化 |
+| 2025-12-06 | 2.0 | Phase 2実装完了に伴う4ステップフローの反映 |
+| 2025-12-05 | 1.0 | 初版作成 |
+
 ## 概要
 
 宇美町施設予約検索システム（umi-facility-search）は、Next.js 15.x (App Router)を使用したモバイルファーストのWebアプリケーションです。本設計では、requirements.mdで定義された6つの主要要件を実現するための技術設計を詳細に定義します。
@@ -1355,18 +1363,67 @@ value="2025121100701   0"
 - `休`: 休館日 → disabled（選択不可）
 
 #### Step 4: 時間帯別空き状況ページ
+
+**重要な構造: 各カレンダーテーブルは1つの日付を表す**
+
+当初の想定（複数日付が横に並ぶ）とは異なり、**各`.calendar`テーブルは1つの日付の時間帯データを表示**します。
+
 | 要素 | セレクタ | 備考 |
 |------|---------|------|
-| カレンダー（全施設分） | `.item .calendar` | 施設ごとのテーブル |
+| カレンダー（全施設分） | `.item .calendar` | 施設ごと×日付ごとにテーブルが存在 |
+| 日付ヘッダー | `.calendar thead th.shisetsu` | "2025年12月11日(水)" 形式 |
 | 施設名 | `.item h3` | 施設名表示 |
-| コート行 | `.calendar tr` | 各コート（全面、倉庫側等） |
-| コート名 | `.calendar tr .shisetsu` | コート名 |
-| 時間帯セル | `.calendar tr td label` | 各時間帯の空き状況 |
+| コート行 | `.calendar tbody tr` | 各コート（全面、倉庫側等） |
+| コート名 | `.calendar tbody tr td:first-child` | コート名 |
+| 時間帯ヘッダー | `.calendar thead th` (3列目以降) | "8:30～9:00" 形式 |
+| 時間帯セル | `.calendar tbody tr td label` | ○（空き）、×（空いていない） |
 
-**時間帯の計算:**
-- 開始時刻: 8:30
-- 間隔: 30分
-- セルのインデックスから時刻を計算（例: index 0 = 8:30-9:00）
+**HTML構造の例:**
+```html
+<div class="item">
+  <h3>宇美町立体育館</h3>
+
+  <!-- 12/11のカレンダー -->
+  <table class="calendar">
+    <thead>
+      <tr>
+        <th class="shisetsu">2025年12月11日(水)</th>
+        <th>定員</th>
+        <th>8:30～9:00</th>
+        <th>9:00～9:30</th>
+        <!-- ... -->
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>全面</td>
+        <td>50</td>
+        <td><label>○</label></td>
+        <td><label>×</label></td>
+        <!-- ... -->
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- 12/12のカレンダー（別テーブル） -->
+  <table class="calendar">
+    <thead>
+      <tr>
+        <th class="shisetsu">2025年12月12日(木)</th>
+        <!-- ... -->
+      </tr>
+    </thead>
+    <!-- ... -->
+  </table>
+</div>
+```
+
+**パースロジック:**
+1. 各`.calendar`テーブルをループ
+2. `th.shisetsu`から日付を正規表現で抽出: `/(\d{4})年(\d{1,2})月(\d{1,2})日/`
+3. 日付が対象日付に含まれるかチェック
+4. 時間帯ヘッダー（3列目以降の`th`）から時刻を取得: "8:30～9:00" → "8:30-9:00"
+5. 各コート行の該当セルから空き状況（○/×）を取得
 
 ### 実装上の重要ポイント
 
@@ -1417,6 +1474,27 @@ private async selectDatesOnFacilityCalendar(page: Page, dates: Date[]): Promise<
 - **最大10日まで選択可能** (システム制約)
 - **施設は全選択が前提** (個別選択は今後の改善案)
 - **ページ遷移は順序固定** (戻る操作は不要)
+
+#### 4. 日付のタイムゾーン問題に注意 ⚠️
+
+JavaScriptの`Date.toISOString()`はUTC時刻を返すため、日本時間（UTC+9）で日付が1日ずれる問題が発生します。
+
+**必ず`date-fns`の`format(date, 'yyyy-MM-dd')`を使用すること:**
+
+```typescript
+// ❌ NG: UTC変換により日付がずれる
+const dateStr = date.toISOString().split('T')[0];
+// 2025-12-11 00:00:00 JST → 2025-12-10 15:00:00 UTC → "2025-12-10"
+
+// ✅ OK: ローカルタイムで正しい日付
+import { format } from 'date-fns';
+const dateStr = format(date, 'yyyy-MM-dd');
+// 2025-12-11 00:00:00 JST → "2025-12-11"
+```
+
+**影響範囲:**
+- フロントエンド → API のリクエスト時 (src/app/page.tsx:39)
+- スクレイピング時の日付フォーマット (src/lib/scraper/index.ts)
 
 ### エラーハンドリング
 
