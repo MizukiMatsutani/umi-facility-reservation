@@ -413,7 +413,7 @@
 
 ### 7.2 エラーとローディングページ
 
-- [-] 7.2.1 エラーページの作成
+- [x] 7.2.1 エラーページの作成
   - ファイル: src/app/error.tsx
   - Next.js App Routerエラーバウンダリ
   - エラーメッセージと再試行ボタン
@@ -422,7 +422,7 @@
   - _要件: 要件5（エラー表示）_
   - _プロンプト: Role: React Developer with expertise in Next.js error boundaries | Task: Create error.tsx error boundary for App Router with ErrorMessage component, displaying generic error with reset button, following Next.js error.tsx conventions | Restrictions: Must be a client component, use Next.js error/reset props signature, integrate ErrorMessage component, provide generic user-friendly Japanese message, trigger reset on retry button | Success: Error boundary catches errors correctly, ErrorMessage displays properly, reset button works, follows Next.js conventions, mobile-optimized_
 
-- [-] 7.2.2 ローディングページの作成
+- [x] 7.2.2 ローディングページの作成
   - ファイル: src/app/loading.tsx
   - Next.js App Routerローディング状態
   - LoadingSpinnerの統合
