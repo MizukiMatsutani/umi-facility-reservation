@@ -4,10 +4,11 @@ import "./globals.css";
 
 // 日本語フォントの設定（Noto Sans JP）
 const notoSansJP = Noto_Sans_JP({
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext"],
   weight: ["400", "500", "700"],
-  display: "swap", // フォント読み込み中も文字を表示
+  display: "swap", // フォント読み込み中も文字を表示（CLS防止）
   variable: "--font-noto-sans-jp",
+  preload: true, // 重要なフォントをプリロード
 });
 
 // メタデータ設定

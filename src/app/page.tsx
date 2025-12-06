@@ -90,17 +90,17 @@ export default function Home() {
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-2xl">
         {/* ヘッダー */}
-        <div className="mb-8 text-center">
+        <header className="mb-8 text-center">
           <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl">
             宇美町施設予約検索
           </h1>
           <p className="mt-3 text-base text-gray-600 sm:text-lg">
             バスケットボール・ミニバスケットボール利用可能施設の空き状況を検索できます
           </p>
-        </div>
+        </header>
 
         {/* メインコンテンツ */}
-        <div className="rounded-lg bg-white px-6 py-8 shadow-md sm:px-8">
+        <main className="rounded-lg bg-white px-6 py-8 shadow-md sm:px-8">
           {isLoading ? (
             // ローディング状態
             <LoadingSpinner message="施設情報を取得しています..." />
@@ -124,7 +124,7 @@ export default function Home() {
             // 通常状態: 検索フォーム表示
             <SearchForm onSubmit={handleSubmit} isLoading={isLoading} />
           )}
-        </div>
+        </main>
 
         {/* フッター（使い方ヒント） */}
         <div className="mt-6 rounded-lg bg-blue-50 p-4 text-sm text-gray-700">

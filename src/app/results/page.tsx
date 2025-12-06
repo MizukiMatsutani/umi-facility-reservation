@@ -34,17 +34,22 @@ export default function ResultsPage() {
       const parsedFacilities: FacilityAvailability[] = JSON.parse(resultsJson);
       const parsedParams: SearchParams = JSON.parse(paramsJson);
 
-      // Date文字列をDateオブジェクトに変換
-      parsedFacilities.forEach((facility) => {
-        facility.availability.forEach((avail) => {
-          avail.date = new Date(avail.date);
-        });
-      });
+      // Date文字列をDateオブジェクトに変換（イミュータブルに）
+      const facilitiesWithDates = parsedFacilities.map((facility) => ({
+        ...facility,
+        availability: facility.availability.map((avail) => ({
+          ...avail,
+          date: new Date(avail.date),
+        })),
+      }));
 
-      parsedParams.dates = parsedParams.dates.map((date) => new Date(date));
+      const paramsWithDates = {
+        ...parsedParams,
+        dates: parsedParams.dates.map((date) => new Date(date)),
+      };
 
-      setFacilities(parsedFacilities);
-      setSearchParams(parsedParams);
+      setFacilities(facilitiesWithDates);
+      setSearchParams(paramsWithDates);
     } catch (error) {
       console.error('検索結果のパースエラー:', error);
       router.push('/');
@@ -97,7 +102,7 @@ export default function ResultsPage() {
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-4xl">
         {/* ヘッダー */}
-        <div className="mb-6">
+        <header className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl">
             検索結果
           </h1>
@@ -148,9 +153,10 @@ export default function ResultsPage() {
               新しい検索
             </button>
           </div>
-        </div>
+        </header>
 
         {/* 検索結果の表示 */}
+        <main>
         {facilities.length === 0 ? (
           // 施設が見つからない場合
           <div className="rounded-lg bg-white p-8 text-center shadow-sm">
@@ -275,6 +281,7 @@ export default function ResultsPage() {
             )}
           </div>
         )}
+        </main>
 
         {/* フッター */}
         <div className="mt-8 rounded-lg bg-blue-50 p-4 text-sm text-gray-700">
