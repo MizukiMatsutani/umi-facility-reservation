@@ -236,7 +236,7 @@
 
 ### 4.1 API /api/scrape の実装
 
-- [-] 4.1.1 APIルートの基本構造作成
+- [x] 4.1.1 APIルートの基本構造作成
   - ファイル: src/app/api/scrape/route.ts
   - POST ハンドラの骨格作成
   - リクエスト/レスポンス型の適用
@@ -245,7 +245,7 @@
   - _要件: 要件3（スクレイピング）_
   - _プロンプト: Role: API Developer with expertise in Next.js App Router API routes | Task: Create /api/scrape route.ts with POST handler skeleton, applying ScrapeRequest and ScrapeResponse types, following Next.js 15 API route conventions | Restrictions: Must use Next.js 15 App Router API route format (export async function POST), properly type request and response, return NextResponse objects, handle CORS if needed | Success: API route structure created, request/response properly typed, follows Next.js 15 conventions, basic handler responds successfully_
 
-- [-] 4.1.2 リクエストバリデーションの実装
+- [x] 4.1.2 リクエストバリデーションの実装
   - ファイル: src/app/api/scrape/route.ts（継続）
   - リクエストボディの検証
   - エラーレスポンスの実装
@@ -254,7 +254,7 @@
   - _要件: 要件1（バリデーション）, 要件5（エラー表示）_
   - _プロンプト: Role: API Developer with expertise in input validation and error handling | Task: Implement request validation in POST handler using validation.ts functions, returning 400 Bad Request with ErrorResponse for invalid inputs (empty dates, invalid time range) | Restrictions: Must validate all inputs before processing, use existing validation utilities, return proper HTTP status codes (400 for validation, 429 for rate limit), provide user-friendly Japanese error messages | Success: All invalid requests properly rejected, validation errors return 400 with clear messages, uses existing validation utilities, error responses match ErrorResponse type_
 
-- [-] 4.1.3 レート制限の統合
+- [x] 4.1.3 レート制限の統合
   - ファイル: src/app/api/scrape/route.ts（継続）
   - RateLimiterの統合
   - 429エラーレスポンスの実装
@@ -263,7 +263,7 @@
   - _要件: 要件3（スクレイピング）_
   - _プロンプト: Role: API Developer with expertise in rate limiting and API security | Task: Integrate rateLimiter.checkRateLimit() in POST handler before scraping, catching rate limit errors and returning 429 Too Many Requests with ErrorResponse and retryable: true | Restrictions: Must call checkRateLimit before scraping, always call releaseRequest in finally block, return 429 status code for rate limit errors, provide Japanese error message | Success: Rate limiting integrated correctly, 429 returned when limit exceeded, request always released in finally, proper error response structure_
 
-- [-] 4.1.4 スクレイピング実行の統合
+- [x] 4.1.4 スクレイピング実行の統合
   - ファイル: src/app/api/scrape/route.ts（継続）
   - FacilityScraper.scrapeFacilities の呼び出し
   - レスポンスの返却
@@ -272,7 +272,7 @@
   - _要件: 要件3（スクレイピング）_
   - _プロンプト: Role: API Developer with expertise in async operations and data transformation | Task: Integrate FacilityScraper.scrapeFacilities() in POST handler, transforming dates from ISO 8601 strings to Date objects, handling scraping errors, and returning ScrapeResponse with 200 status | Restrictions: Must parse ISO dates correctly, handle all scraping errors gracefully, return 500 for scraping errors with retryable flag, ensure proper async/await usage, always release rate limiter | Success: Scraping integrated successfully, date parsing works correctly, errors handled appropriately, proper response structure, rate limiter always released_
 
-- [-] 4.1.5 エラーハンドリングの完成
+- [x] 4.1.5 エラーハンドリングの完成
   - ファイル: src/app/api/scrape/route.ts（継続）
   - 包括的なtry-catchブロック
   - エラータイプ別のレスポンス
