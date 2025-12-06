@@ -392,7 +392,7 @@
 
 ### 7.1 グローバルスタイルとレイアウト
 
-- [ ] 7.1.1 グローバルスタイルの調整
+- [x] 7.1.1 グローバルスタイルの調整
   - ファイル: src/styles/globals.css
   - 日本語フォント設定
   - モバイル最適化スタイル
@@ -401,7 +401,7 @@
   - _要件: 要件6（レスポンシブデザイン）_
   - _プロンプト: Role: Frontend Developer with expertise in CSS and typography for Japanese web design | Task: Customize globals.css with Japanese font stack (system fonts), mobile-first base styles (16px minimum font size), TailwindCSS custom utilities (tap-target-44 class for 44px min-width/height), color palette variables | Restrictions: Must use system fonts for Japanese (Hiragino Sans, Meiryo, etc.), ensure 16px+ body text, define 44px tap target utility, maintain 4.5:1 contrast ratio, optimize for mobile viewport | Success: Fonts render correctly in Japanese, mobile typography optimized, tap target utility available, color palette defined, high contrast maintained_
 
-- [ ] 7.1.2 レイアウトコンポーネントの作成
+- [x] 7.1.2 レイアウトコンポーネントの作成
   - ファイル: src/app/layout.tsx
   - HTMLメタタグの設定
   - フォント最適化（next/font）
@@ -413,7 +413,7 @@
 
 ### 7.2 エラーとローディングページ
 
-- [ ] 7.2.1 エラーページの作成
+- [-] 7.2.1 エラーページの作成
   - ファイル: src/app/error.tsx
   - Next.js App Routerエラーバウンダリ
   - エラーメッセージと再試行ボタン
@@ -422,7 +422,7 @@
   - _要件: 要件5（エラー表示）_
   - _プロンプト: Role: React Developer with expertise in Next.js error boundaries | Task: Create error.tsx error boundary for App Router with ErrorMessage component, displaying generic error with reset button, following Next.js error.tsx conventions | Restrictions: Must be a client component, use Next.js error/reset props signature, integrate ErrorMessage component, provide generic user-friendly Japanese message, trigger reset on retry button | Success: Error boundary catches errors correctly, ErrorMessage displays properly, reset button works, follows Next.js conventions, mobile-optimized_
 
-- [ ] 7.2.2 ローディングページの作成
+- [-] 7.2.2 ローディングページの作成
   - ファイル: src/app/loading.tsx
   - Next.js App Routerローディング状態
   - LoadingSpinnerの統合

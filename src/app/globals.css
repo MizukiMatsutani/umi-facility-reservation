@@ -1,19 +1,19 @@
 @import "tailwindcss";
 
-/* カラーパレット定義 */
+/* カラーパレット定義（コントラスト比4.5:1以上確保） */
 :root {
   --background: #ffffff;
-  --foreground: #171717;
-  --primary: #2563eb; /* 青 */
+  --foreground: #1a1a1a; /* コントラスト比改善: #171717 -> #1a1a1a */
+  --primary: #1d4ed8; /* 青（コントラスト比改善） */
   --primary-foreground: #ffffff;
-  --secondary: #64748b; /* グレー */
+  --secondary: #475569; /* グレー（コントラスト比改善） */
   --secondary-foreground: #ffffff;
-  --success: #16a34a; /* 緑（空き） */
+  --success: #15803d; /* 緑（空き、コントラスト比改善） */
   --success-foreground: #ffffff;
-  --muted: #9ca3af; /* 薄いグレー（空いていない） */
-  --muted-foreground: #4b5563;
+  --muted: #6b7280; /* グレー（空いていない、コントラスト比改善） */
+  --muted-foreground: #1f2937;
   --border: #e5e7eb;
-  --error: #dc2626; /* 赤（エラー） */
+  --error: #b91c1c; /* 赤（エラー、コントラスト比改善） */
   --error-foreground: #ffffff;
 }
 
@@ -33,9 +33,11 @@
   --color-error: var(--error);
   --color-error-foreground: var(--error-foreground);
 
-  /* 日本語フォント設定（システムフォント） */
+  /* 日本語フォント設定（Noto Sans JP + システムフォールバック） */
   --font-sans:
-    "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", Meiryo, "Yu Gothic", sans-serif;
+    var(--font-noto-sans-jp, -apple-system), BlinkMacSystemFont,
+    "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP",
+    Meiryo, "Yu Gothic", "MS PGothic", sans-serif;
 
   /* フォントサイズ（最小16px） */
   --font-size-xs: 0.875rem; /* 14px */
@@ -92,9 +94,39 @@ body {
   min-height: var(--spacing-tap-target);
 }
 
+/* リンクとボタンのデフォルトスタイル */
+a, button {
+  /* タップハイライトの調整 */
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+}
+
+button {
+  /* ボタンのデフォルトスタイルリセット */
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* フォーカス可視化（アクセシビリティ） */
+*:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
 /* モバイル最適化：スクロール */
 @media (max-width: 640px) {
   body {
     overflow-y: auto; /* 縦のみスクロール */
+  }
+
+  /* モバイルでのテキスト選択の改善 */
+  * {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  /* ボタンとインタラクティブ要素は選択不可 */
+  button, a, input[type="button"], input[type="submit"] {
+    -webkit-user-select: none;
+    user-select: none;
   }
 }
