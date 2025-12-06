@@ -1,6 +1,6 @@
 {
   "filePath": ".spec-workflow/specs/umi-facility-search/design.md",
-  "currentVersion": 3,
+  "currentVersion": 4,
   "snapshots": [
     {
       "version": 1,
@@ -25,6 +25,14 @@
       "trigger": "approved",
       "approvalId": "approval_1764946562330_6wb102444",
       "approvalTitle": "設計ドキュメント (design.md) の承認 [修正版]"
+    },
+    {
+      "version": 4,
+      "filename": "snapshot-004.json",
+      "timestamp": "2025-12-06T13:49:39.284Z",
+      "trigger": "approved",
+      "approvalId": "approval_1765014483569_ls0xb2rbe",
+      "approvalTitle": "設計書の更新 - Phase 2完全スクレイピングフローの設計追加"
     }
   ]
 }

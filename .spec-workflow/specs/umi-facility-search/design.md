@@ -490,7 +490,9 @@ Phase 2は当初「延期」としていましたが、以下の理由により�
 
 詳細は `docs/investigation/implementation-gap-analysis.md` を参照
 
-### スクレイピングフロー（Phase 2完全版）
+### スクレイピングフロー（Phase 2完全版 - 2025-12-06更新）
+
+**重要な変更**: 調査により、実際のフローは以下の4ステップであることが判明しました。
 
 ```mermaid
 sequenceDiagram
@@ -502,37 +504,49 @@ sequenceDiagram
     UI->>API: POST /api/scrape {dates, timeRange}
     API->>SC: scrapeFacilities(dates, timeRange)
 
-    Note over SC,EXT: Phase 1: 施設一覧まで取得
-    SC->>EXT: 1. navigate to search page
-    EXT-->>SC: HTML response
-    SC->>SC: 2. selectSports()
-    SC->>SC: 3. searchFacilities()
-    SC->>SC: 4. selectAllFacilities()
+    Note over SC,EXT: Step 1: 検索ページ (WgR_ModeSelect)
+    SC->>EXT: 1. navigateToSearchPage()
+    EXT-->>SC: 検索ページHTML
+    SC->>SC: 2. selectSports() - 屋内スポーツ+バスケットボール
+    SC->>SC: 3. searchFacilities() - 検索ボタンクリック
 
-    Note over SC,EXT: Phase 2: 各日付・各施設の空き状況取得
-    loop 各施設
-        loop 各日付
-            SC->>SC: 5. selectFacilityCheckbox(facility)
-            SC->>SC: 6. clickNextButton()
-            SC->>EXT: → 日付選択ページへ遷移
-            EXT-->>SC: 日付選択ページHTML
+    Note over SC,EXT: Step 2: 施設検索ページ (WgR_ShisetsuKensaku)
+    SC->>EXT: → 施設一覧ページへ遷移
+    EXT-->>SC: 施設一覧ページHTML
+    SC->>SC: 4. selectAllFacilitiesAndNavigate() - 全施設をlabel.click()で選択
+    Note over SC: ★重要: checkbox.checked=trueではなくlabel.click()を使用
 
-            SC->>SC: 7. selectDate(date)
-            SC->>EXT: → 空き状況ページへ遷移
-            EXT-->>SC: 空き状況ページHTML
+    Note over SC,EXT: Step 3: 施設別空き状況ページ (WgR_ShisetsubetsuAkiJoukyou) ★新発見★
+    SC->>EXT: → 施設別空き状況ページへ遷移
+    EXT-->>SC: 施設別カレンダーページHTML (各施設×日付のマトリックス)
+    SC->>SC: 5. selectDatesOnFacilityCalendar(dates) - 対象日付を選択
+    Note over SC: ○または△のみ選択、最大10日まで<br/>日付format: YYYYMMDD + 施設コード
 
-            SC->>SC: 8. scrapeAvailability()
-            Note over SC: 時間帯テーブルをパース
-
-            SC->>EXT: ← 戻る（日付選択ページ）
-            SC->>EXT: ← 戻る（施設一覧ページ）
-        end
-    end
+    Note over SC,EXT: Step 4: 時間帯別空き状況ページ (WgR_JikantaibetsuAkiJoukyou)
+    SC->>EXT: → 時間帯別空き状況ページへ遷移
+    EXT-->>SC: 時間帯別空き状況ページHTML
+    SC->>SC: 6. scrapeTimeSlots() - 全施設×全時間帯を一括取得
+    Note over SC: 施設ごとのコート×時間帯テーブルをパース
 
     SC-->>API: FacilityAvailability[]
     API-->>UI: JSON response
     UI->>UI: 空き状況を表示
 ```
+
+**旧設計との主な違い:**
+
+1. **Step 3（施設別空き状況ページ）の存在**
+   - 旧設計では見落としていたページ
+   - ここで日付を選択する（検索フォームに日付入力欄はない）
+   - 各施設ごとにカレンダーが表示される
+
+2. **フロー全体が1回の処理**
+   - 旧設計: 施設ごと・日付ごとにループして複数回遷移
+   - 新設計: 全施設選択 → 全日付選択 → 一括で空き状況取得
+
+3. **チェックボックス選択方法**
+   - 旧設計: `checkbox.checked = true; checkbox.click();`
+   - 新設計: `label.click();` （イベントハンドラーの制約により必須）
 
 ### Scraper クラス
 
@@ -548,43 +562,113 @@ sequenceDiagram
 - ✅ `navigateToSearchPage()` - 初期ページへのアクセス
 - ✅ `selectSports()` - スポーツ種目の選択（AJAX対応、label要素クリック）
 - ✅ `searchFacilities()` - 検索実行（searchMokuteki()関数呼び出し）
-- ✅ `selectAllFacilities()` - 施設一覧取得
-- ⏳ `selectFacilityAndNavigate()` - 施設選択と「次へ進む」クリック（Phase 2実装中）
-- ⏳ `selectDateAndNavigate()` - 日付選択とページ遷移（Phase 2実装中）
-- ⏳ `scrapeAvailability()` - 空き状況ページのパース（Phase 2実装中）
-- ⏳ `navigateBack()` - ブラウザの戻る操作（Phase 2実装中）
+- ✅ `selectAllFacilities()` - 施設一覧取得（Phase 1版）
+- ✅ `selectAllFacilitiesAndNavigate()` - 全施設選択+次へ進む（Phase 2完了）
+- ✅ `selectDatesOnFacilityCalendar()` - 施設別空き状況ページで日付選択（Phase 2完了）
+- ✅ `scrapeTimeSlots()` - 時間帯別空き状況の一括取得（Phase 2完了）
+- ✅ `scrapeFacilities()` - 全体フローの統合実行（Phase 2完了）
+- ❌ `selectFacilityAndNavigate()` - 削除予定（旧設計の誤認に基づくメソッド）
+- ❌ `navigateBack()` - 不要（新フローでは戻る操作なし）
 
-**主要メソッド（Phase 1実装版）:**
+**Phase 2の重要な技術的発見:**
+- チェックボックス選択は `label.click()` を使用（`checkbox.checked = true` は動作しない）
+- 日付valueフォーマット: `YYYYMMDD` + 施設コード（例: "2025121100701   0"）
+- 空き状況ラベル: ○（空き）、△（一部空き）のみ選択、×（満席）、－（対象外）、休（休館日）はスキップ
+- 最大10日まで選択可能（システム制約）
+
+**主要メソッド（Phase 2完了版）:**
 
 ```typescript
 class FacilityScraper {
   private browser: Browser | null = null;
 
   /**
-   * スクレイピング実行（Phase 1版）
+   * スクレイピング実行（Phase 2完了版 - 2025-12-06更新）
+   *
+   * @param dates - 対象日付の配列（最大10日）
+   * @returns 施設ごとの空き状況
    */
-  async scrapeFacilities(): Promise<FacilityAvailability[]> {
+  async scrapeFacilities(dates: Date[]): Promise<FacilityAvailability[]> {
     await this.initBrowser();
 
     try {
       const page = await this.browser!.newPage();
 
-      // Phase 1: 施設一覧まで取得
+      // Step 1: 検索ページ
       await this.navigateToSearchPage(page);
       await this.selectSports(page);
       await this.searchFacilities(page);
-      const facilities = await this.selectAllFacilities(page);
 
-      // Phase 1では空き状況は空配列
-      const results: FacilityAvailability[] = facilities.map(facility => ({
-        facility,
-        availability: []  // Phase 2で実装予定
-      }));
+      // Step 2: 施設検索ページ - 全施設を選択して次へ
+      await this.selectAllFacilitiesAndNavigate(page);
 
-      return results;
+      // Step 3: 施設別空き状況ページ - 対象日付を選択して次へ
+      await this.selectDatesOnFacilityCalendar(page, dates);
+
+      // Step 4: 時間帯別空き状況ページ - 空き状況を一括取得
+      const availabilityData = await this.scrapeTimeSlots(page);
+
+      return availabilityData;
     } finally {
       await this.closeBrowser();
     }
+  }
+
+  /**
+   * Step 2: 全施設を選択して次へ進む
+   * 重要: label.click()を使用（checkbox.checked=trueでは動作しない）
+   */
+  private async selectAllFacilitiesAndNavigate(page: Page): Promise<void> {
+    const checkboxes = await page.$$('.shisetsu input[type="checkbox"][name="checkShisetsu"]');
+
+    for (const checkbox of checkboxes) {
+      const id = await checkbox.evaluate(el => el.id);
+      await page.evaluate((id) => {
+        const label = document.querySelector(`label[for="${id}"]`);
+        if (label) label.click();
+      }, id);
+    }
+
+    await page.click('.navbar .next > a');
+    await page.waitForNavigation({ waitUntil: 'networkidle0' });
+  }
+
+  /**
+   * Step 3: 施設別空き状況ページで日付を選択
+   * 日付valueフォーマット: YYYYMMDD + 施設コード
+   * ○または△のみ選択
+   */
+  private async selectDatesOnFacilityCalendar(page: Page, dates: Date[]): Promise<void> {
+    const dateStrings = dates.map(date => format(date, 'yyyyMMdd'));
+
+    await page.evaluate((dateStrings) => {
+      const checkboxes = document.querySelectorAll('input[name="checkdate"]');
+
+      checkboxes.forEach(checkbox => {
+        const dateValue = checkbox.value.substring(0, 8);
+
+        if (dateStrings.includes(dateValue)) {
+          const label = document.querySelector(`label[for="${checkbox.id}"]`);
+          const status = label?.textContent?.trim();
+
+          // ○または△のみ選択
+          if (status === '○' || status === '△') {
+            label.click();
+          }
+        }
+      });
+    }, dateStrings);
+
+    await page.click('.navbar .next > a');
+    await page.waitForNavigation({ waitUntil: 'networkidle0' });
+  }
+
+  /**
+   * Step 4: 時間帯別空き状況を一括取得
+   */
+  private async scrapeTimeSlots(page: Page): Promise<FacilityAvailability[]> {
+    // 各施設のカレンダーを取得して解析
+    // 詳細は実装ファイルを参照
   }
 
   /**
@@ -1214,131 +1298,153 @@ module.exports = nextConfig;
 
 ## Phase 2 新規メソッドの設計
 
-### selectFacilityAndNavigate(page, facility)
+---
 
-**目的**: 施設を選択して日付選択ページに遷移
+## Phase 2調査結果と実装詳細（2025-12-06更新）
 
-**処理フロー**:
-1. 施設のチェックボックスを選択
-2. 「次へ進む」ボタンをクリック
-3. 日付選択ページへの遷移を待機
+### 調査で判明した重要な事実
 
-**実装詳細**:
-```typescript
-private async selectFacilityAndNavigate(page: Page, facility: Facility): Promise<void> {
-  // 1. 施設のチェックボックスを選択
-  await page.evaluate((facilityId) => {
-    const checkbox = document.querySelector(`input[name="checkShisetsu"][value="${facilityId}"]`);
-    if (checkbox) {
-      (checkbox as HTMLInputElement).checked = true;
-    }
-  }, facility.id);
+**問題の根本原因:**
+1. 検索フォームに日付入力フィールドは存在しない
+2. 中間ページ（Step 3: 施設別空き状況ページ）が存在する
+3. チェックボックス選択は `label.click()` が必須
 
-  // 2. 「次へ進む」ボタンをクリック
-  const navigationPromise = page.waitForNavigation({
-    waitUntil: 'networkidle0',
-    timeout: 10000
-  });
-
-  await page.click('#btnNext'); // 「次へ進む」ボタンのID（要調査）
-
-  await navigationPromise;
-}
+**正しいページ遷移フロー:**
+```
+Step 1: WgR_ModeSelect (検索ページ)
+  ↓ スポーツ選択 + 検索ボタン
+Step 2: WgR_ShisetsuKensaku (施設検索ページ)
+  ↓ 全施設選択 + 次へ進む
+Step 3: WgR_ShisetsubetsuAkiJoukyou (施設別空き状況ページ) ★重要★
+  ↓ 日付選択 + 次へ進む
+Step 4: WgR_JikantaibetsuAkiJoukyou (時間帯別空き状況ページ)
+  ↓ 空き状況を取得
 ```
 
-### selectDateAndNavigate(page, date)
+### セレクタ一覧（検証済み）
 
-**目的**: カレンダーから日付を選択して空き状況ページに遷移
+#### Step 2: 施設検索ページ
+| 要素 | セレクタ | 備考 |
+|------|---------|------|
+| 施設チェックボックス | `.shisetsu input[type="checkbox"][name="checkShisetsu"]` | 全施設 |
+| 施設ラベル | `label[for="checkShisetsu${facilityId}"]` | label.click()を使用 |
+| 次へ進むボタン | `.navbar .next > a` | ページ遷移 |
 
-**処理フロー**:
-1. カレンダーUIで指定日付を探す
-2. 日付をクリック
-3. 空き状況ページへの遷移を待機
+#### Step 3: 施設別空き状況ページ
+| 要素 | セレクタ | 備考 |
+|------|---------|------|
+| カレンダー（全施設分） | `.item .calendar` | 施設数分のカレンダー |
+| 施設名 | `.item h3` | 施設名表示 |
+| 日付チェックボックス | `input[type="checkbox"][name="checkdate"]` | 全日付 |
+| 日付ラベル | `label[for="${checkboxId}"]` | ○△×－休 |
+| 次へ進むボタン | `.navbar .next > a` | ページ遷移 |
 
-**実装詳細**:
-```typescript
-private async selectDateAndNavigate(page: Page, date: Date): Promise<void> {
-  const targetDate = format(date, 'yyyy-MM-dd'); // 例: "2025-12-11"
-
-  const navigationPromise = page.waitForNavigation({
-    waitUntil: 'networkidle0',
-    timeout: 10000
-  });
-
-  // カレンダーから日付を選択（セレクタは要調査）
-  await page.evaluate((dateStr) => {
-    const dateCell = document.querySelector(`td[data-date="${dateStr}"]`);
-    if (dateCell) {
-      (dateCell as HTMLElement).click();
-    }
-  }, targetDate);
-
-  await navigationPromise;
-}
+**日付valueフォーマット:**
+```
+value="2025121100701   0"
+      ^^^^^^^^ ^^^^^ ^^^
+      日付     施設  不明
+      YYYYMMDD コード
 ```
 
-### scrapeAvailability(page, date)
+**空き状況ラベル:**
+- `○`: 空きあり → 選択する
+- `△`: 一部空き → 選択する
+- `×`: 空きなし → 選択しない
+- `－`: 対象外 → 選択しない
+- `休`: 休館日 → disabled（選択不可）
 
-**目的**: 空き状況ページから時間帯データを取得
+#### Step 4: 時間帯別空き状況ページ
+| 要素 | セレクタ | 備考 |
+|------|---------|------|
+| カレンダー（全施設分） | `.item .calendar` | 施設ごとのテーブル |
+| 施設名 | `.item h3` | 施設名表示 |
+| コート行 | `.calendar tr` | 各コート（全面、倉庫側等） |
+| コート名 | `.calendar tr .shisetsu` | コート名 |
+| 時間帯セル | `.calendar tr td label` | 各時間帯の空き状況 |
 
-**処理フロー**:
-1. 時間帯テーブルを探す
-2. 各行から時間帯と空き状況を抽出
-3. TimeSlot型に変換
+**時間帯の計算:**
+- 開始時刻: 8:30
+- 間隔: 30分
+- セルのインデックスから時刻を計算（例: index 0 = 8:30-9:00）
 
-**実装詳細**:
+### 実装上の重要ポイント
+
+#### 1. チェックボックス選択は必ずlabel.click()
+
 ```typescript
-private async scrapeAvailability(page: Page, date: Date): Promise<TimeSlot[]> {
-  const slots = await page.evaluate(() => {
-    const rows = Array.from(document.querySelectorAll('.timeslot-table tbody tr'));
+// ❌ 動作しない方法
+checkbox.checked = true;
+checkbox.click();
 
-    return rows.map(row => {
-      const timeCell = row.querySelector('.time');
-      const statusCell = row.querySelector('.status');
+// ✅ 動作する方法
+const label = document.querySelector(`label[for="${checkbox.id}"]`);
+label.click();
+```
 
-      const time = timeCell?.textContent?.trim() || '';
-      const statusText = statusCell?.textContent?.trim() || '';
+**理由**: チェックボックスのイベントハンドラーが `.checked` プロパティを強制的に `false` に戻すため
 
-      // ○=空き、△=一部空き、×=空いていない、-=対象外
-      const available = statusText === '○' || statusText === '△';
+#### 2. 日付選択ロジック
 
-      return { time, available };
+```typescript
+private async selectDatesOnFacilityCalendar(page: Page, dates: Date[]): Promise<void> {
+  // YYYYMMDD形式に変換
+  const dateStrings = dates.map(date => format(date, 'yyyyMMdd'));
+
+  await page.evaluate((dateStrings) => {
+    const checkboxes = document.querySelectorAll('input[name="checkdate"]');
+
+    checkboxes.forEach(checkbox => {
+      // valueの最初の8文字が日付
+      const checkboxDate = checkbox.value.substring(0, 8);
+
+      if (dateStrings.includes(checkboxDate)) {
+        const label = document.querySelector(`label[for="${checkbox.id}"]`);
+        const status = label?.textContent?.trim();
+
+        // ○または△のみ選択
+        if (status === '○' || status === '△') {
+          label.click();
+        }
+      }
     });
-  });
-
-  return slots;
+  }, dateStrings);
 }
 ```
 
-### navigateBack(page)
+#### 3. 制約事項
 
-**目的**: ブラウザの戻る操作
+- **最大10日まで選択可能** (システム制約)
+- **施設は全選択が前提** (個別選択は今後の改善案)
+- **ページ遷移は順序固定** (戻る操作は不要)
 
-**実装詳細**:
+### エラーハンドリング
+
 ```typescript
-private async navigateBack(page: Page): Promise<void> {
-  await Promise.all([
-    page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 10000 }),
-    page.goBack()
-  ]);
+// ダイアログの自動受け入れ
+page.on('dialog', async dialog => {
+  console.log('ダイアログ:', dialog.message());
+  await dialog.accept();
+});
+
+// タイムアウト処理
+try {
+  await page.waitForNavigation({
+    waitUntil: 'networkidle0',
+    timeout: 10000
+  });
+} catch (error) {
+  throw new Error(`ページ遷移タイムアウト: ${error.message}`);
 }
 ```
 
-### Phase 2実装の注意点
+### 関連ドキュメント
 
-1. **HTML構造の調査**: 実際のページをスクレイピングして正確なセレクタを特定する必要があります
-   - 日付選択ページのカレンダーUI構造
-   - 空き状況ページの時間帯テーブル構造
-   - 「次へ進む」ボタンのセレクタ
-
-2. **複数日・複数施設の処理**: ループ処理で各組み合わせをスクレイピング
-   - 施設数 × 日付数 のページ遷移が発生
-   - タイムアウトに注意（全体で30秒）
-
-3. **エラーハンドリング**: 各ステップでのエラーハンドリングを実装
-   - ページ遷移失敗
-   - 要素が見つからない
-   - タイムアウト
+詳細な調査結果は以下のドキュメントを参照:
+- `investigation/complete-flow-analysis.md` - 完全なフロー調査結果
+- `investigation/INVESTIGATION_SUMMARY.md` - 調査結果サマリー
+- `../../../docs/design/scraping-flow-design.md` - スクレイピングフロー設計書（詳細版）
+- `../../../docs/tasks/implementation-tasks.md` - 実装タスク一覧（5フェーズ）
 
 ## まとめ
 
@@ -1351,6 +1457,21 @@ private async navigateBack(page: Page): Promise<void> {
 4. TDDアプローチによるユニットテスト
 5. モバイルファーストのレスポンシブデザイン
 
+**Phase 2実装完了 (2025-12-06):**
+- ✅ 4ステップの完全なスクレイピングフロー実装
+- ✅ 施設別空き状況ページ（Step 3）の発見と実装
+- ✅ label.click()パターンの適用
+- ✅ 日付選択ロジックの実装
+- ✅ 時間帯別空き状況の一括取得
+
+**重要な技術的発見:**
+- チェックボックス選択は `label.click()` が必須
+- 日付valueフォーマット: `YYYYMMDD` + 施設コード
+- 空き状況ラベル（○△×－休）による選択フィルタリング
+- 最大10日まで選択可能（システム制約）
+
 **次のステップ:**
-- tasks.mdでの実装タスクへの分解
-- TDDアプローチでの実装開始
+- ✅ Phase 2実装完了
+- 統合テストの実施
+- パフォーマンス最適化
+- エラーハンドリングの強化
