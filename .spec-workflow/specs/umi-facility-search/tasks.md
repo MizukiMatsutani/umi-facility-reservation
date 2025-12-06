@@ -294,7 +294,7 @@
   - _要件: 要件3（スクレイピング - Phase 2）, 要件1（複数日検索）_
   - _プロンプト: Role: Senior Backend Developer with expertise in complex workflow orchestration | Task: Rewrite scrapeAvailability method to orchestrate Phase 2 flow: call selectFacilityAndNavigate (once), then for each date in dates[] array: call selectDateAndNavigate, scrapeAvailabilityFromPage, apply timeRange filtering if provided, navigateBack (except last date), return AvailabilityData[] with all dates, handle errors at each step | Restrictions: Must call selectFacilityAndNavigate only once before date loop, loop through all dates[], call navigateBack between dates (not after last date), apply timeRange filtering using existing filterTimeSlots utility, handle partial failures (log and continue to next date), maintain timeout budget (30 seconds total), return AvailabilityData[] matching type signature | Success: Method orchestrates full Phase 2 flow correctly, multiple dates processed successfully, navigates back between dates, applies time filtering, handles errors gracefully (continues on non-fatal errors), returns correct AvailabilityData structure, stays within timeout budget_
 
-- [-] 3.5.7 Phase 2フローの統合テスト
+- [x] 3.5.7 Phase 2フローの統合テスト
   - ファイル: src/lib/scraper/__tests__/phase2-integration.test.ts
   - Phase 2フロー全体の統合テスト作成
   - 複数日、時間範囲フィルタのテストケース
@@ -302,7 +302,7 @@
   - _要件: 要件3（スクレイピング - Phase 2）_
   - _プロンプト: Role: QA Engineer with expertise in integration testing and Puppeteer mocking | Task: Create integration test for Phase 2 scraping flow, mocking Puppeteer page methods (navigate, evaluate, goBack), testing single date scenario, multiple dates scenario (2-3 dates), time range filtering scenario, error scenarios (navigation timeout, missing table), verifying correct method call sequences and return data structure | Restrictions: Must mock Puppeteer completely for test speed, verify selectFacilityAndNavigate called once, selectDateAndNavigate called per date, navigateBack called between dates only, verify AvailabilityData[] structure correct, test with realistic time slot data, test error handling (continue on error) | Success: Integration tests pass, all scenarios covered (single date, multiple dates, filtering, errors), mocking is realistic and maintainable, test execution is fast (<5 seconds total), validates Phase 2 flow correctness_
 
-- [-] 3.5.8 scrapeFacilitiesメソッドの更新（Phase 2対応）
+- [x] 3.5.8 scrapeFacilitiesメソッドの更新（Phase 2対応）
   - ファイル: src/lib/scraper/index.ts（継続）
   - scrapeFacilities メソッドの更新
   - 各施設ごとのscrapeAvailability呼び出し処理の修正

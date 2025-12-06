@@ -57,21 +57,66 @@ export class FacilityScraper {
       // 施設一覧取得
       const facilities = await this.selectAllFacilities(page);
 
-      // 各施設の空き状況をスクレイピング
-      // 施設一覧ページには既に各施設の「本日の予定」が表示されているため、
-      // このページから直接スクレイピングする
+      console.log(`\n🏢 取得した施設数: ${facilities.length}件`);
+
+      // 各施設の空き状況をスクレイピング（Phase 2対応）
       const results: FacilityAvailability[] = [];
 
-      for (const facility of facilities) {
-        const availability = await this.scrapeAvailability(
-          page,
-          facility,
-          dates,
-          timeRange
-        );
-        results.push({ facility, availability });
+      for (let i = 0; i < facilities.length; i++) {
+        const facility = facilities[i];
+        console.log(`\n📍 施設 ${i + 1}/${facilities.length}: ${facility.name}`);
+
+        try {
+          // Phase 2: 各施設の空き状況を取得
+          const availability = await this.scrapeAvailability(
+            page,
+            facility,
+            dates,
+            timeRange
+          );
+          
+          results.push({ facility, availability });
+
+          // 最後の施設以外は施設一覧ページに戻る
+          if (i < facilities.length - 1) {
+            console.log('🔙 施設一覧ページに戻ります...');
+            
+            // 日付選択ページに戻る(scrapeAvailabilityの最後の状態)
+            await page.goBack({ timeout: 10000, waitUntil: 'networkidle0' });
+            
+            // 施設一覧ページに戻る
+            await page.goBack({ timeout: 10000, waitUntil: 'networkidle0' });
+            
+            console.log('✅ 施設一覧ページに戻りました');
+            
+            // ページの状態が安定するまで少し待機
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        } catch (facilityError) {
+          console.error(`❌ 施設「${facility.name}」の処理に失敗:`, facilityError);
+          // 施設ごとのエラーは記録して続行
+          results.push({ 
+            facility, 
+            availability: [] 
+          });
+          
+          // エラーが発生した場合も施設一覧ページに戻ろうと試みる
+          if (i < facilities.length - 1) {
+            try {
+              console.log('🔙 エラー後に施設一覧ページに戻ります...');
+              // 現在のページ状態に応じて適切に戻る
+              await page.goBack({ timeout: 10000, waitUntil: 'networkidle0' });
+              await page.goBack({ timeout: 10000, waitUntil: 'networkidle0' });
+            } catch (backError) {
+              console.error('施設一覧ページへの復帰に失敗:', backError);
+              // 復帰できない場合は処理を中断
+              break;
+            }
+          }
+        }
       }
 
+      console.log(`\n✅ スクレイピング完了: ${results.length}/${facilities.length}施設`);
       return results;
     } finally {
       // ブラウザは必ずクリーンアップ
