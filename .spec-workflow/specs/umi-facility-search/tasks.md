@@ -285,7 +285,7 @@
 
 ### 5.1 基本UIコンポーネント
 
-- [-] 5.1.1 LoadingSpinnerコンポーネントの作成
+- [x] 5.1.1 LoadingSpinnerコンポーネントの作成
   - ファイル: src/components/ui/LoadingSpinner.tsx
   - アニメーション付きスピナー
   - 進行状況メッセージ表示
@@ -294,7 +294,7 @@
   - _要件: 要件4（ローディング状態）_
   - _プロンプト: Role: Frontend Developer with expertise in React components and CSS animations | Task: Create LoadingSpinner component with animated spinner (TailwindCSS animate-spin) and optional message prop, optimized for mobile viewing | Restrictions: Must be a client component ('use client'), use TailwindCSS for styling, ensure animation is smooth (60fps), support optional message string, maintain accessibility (aria-label) | Success: Component renders spinner correctly, animation is smooth, message displays properly, accessible, mobile-optimized_
 
-- [-] 5.1.2 ErrorMessageコンポーネントの作成
+- [x] 5.1.2 ErrorMessageコンポーネントの作成
   - ファイル: src/components/ui/ErrorMessage.tsx
   - エラータイプ別メッセージ表示
   - 再試行ボタン
@@ -304,7 +304,7 @@
 
 ### 5.2 フォームコンポーネント
 
-- [-] 5.2.1 DatePickerコンポーネントの作成
+- [x] 5.2.1 DatePickerコンポーネントの作成
   - ファイル: src/components/ui/DatePicker.tsx
   - カレンダーグリッドUI
   - 複数日選択機能
@@ -313,7 +313,7 @@
   - _要件: 要件1（複数日選択）_
   - _プロンプト: Role: Frontend Developer with expertise in calendar UIs and touch interactions | Task: Create DatePicker component with calendar grid layout using TailwindCSS, supporting multiple date selection with visual highlighting, using date-fns for date calculations, optimized for mobile touch | Restrictions: Must be a client component, use date-fns for date math, implement minDate prop to restrict past dates, use TailwindCSS grid for layout, ensure tap targets are 44px+, show clear selection state | Success: Calendar displays correctly, multiple dates selectable, selection visually clear, touch-optimized, respects minDate, uses date-fns_
 
-- [-] 5.2.2 QuickDateSelectコンポーネントの作成
+- [x] 5.2.2 QuickDateSelectコンポーネントの作成
   - ファイル: src/components/ui/QuickDateSelect.tsx
   - 「本日から1週間」ボタン
   - 日付配列の自動生成
@@ -322,7 +322,7 @@
   - _要件: 要件1（クイック日付選択）_
   - _プロンプト: Role: Frontend Developer with expertise in React hooks and date utilities | Task: Create QuickDateSelect component with "本日から1週間" button that generates 7-day Date array using date.ts generateDateRange utility and calls onQuickSelect callback | Restrictions: Must be a client component, use existing generateDateRange utility, style button with 44px+ tap target, use clear Japanese label, integrate with parent form state | Success: Button renders correctly, generates 7-day array on click, callback fires with correct dates, meets tap target size, integrates smoothly_
 
-- [-] 5.2.3 TimePickerコンポーネントの作成
+- [x] 5.2.3 TimePickerコンポーネントの作成
   - ファイル: src/components/ui/TimePicker.tsx
   - From-To時刻選択ドロップダウン
   - バリデーション（Toは Fromより後）
@@ -331,7 +331,7 @@
   - _要件: 要件1（時間帯指定）_
   - _プロンプト: Role: Frontend Developer with expertise in form inputs and validation | Task: Create TimePicker component with From/To dropdowns (8:30 to 21:30 in 30-min increments), validating To > From, supporting undefined (全時間帯), optimized for mobile touch | Restrictions: Must be a client component, generate time options dynamically (8:30-21:30, 30min steps), validate To is after From, style dropdowns for mobile (large tap target), allow clearing (全時間帯), use controlled component pattern | Success: Dropdowns display correctly, validation works (To > From), supports undefined state, mobile-optimized, validation feedback clear_
 
-- [-] 5.2.4 SearchFormコンポーネントの作成
+- [x] 5.2.4 SearchFormコンポーネントの作成
   - ファイル: src/components/SearchForm.tsx
   - フォームレイアウトの構築
   - DatePicker, TimePicker, QuickDateSelectの統合
