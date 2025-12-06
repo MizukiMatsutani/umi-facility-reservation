@@ -75,7 +75,7 @@
 
 ### 2.1 日付ユーティリティの実装
 
-- [ ] 2.1.1 日付ユーティリティのテスト作成
+- [x] 2.1.1 日付ユーティリティのテスト作成
   - ファイル: src/lib/utils/__tests__/date.test.ts
   - 日付範囲生成のテストケースを作成
   - 日付フォーマットのテストケースを作成
@@ -83,7 +83,7 @@
   - _要件: 要件1（日付と時間帯による検索）_
   - _プロンプト: Role: QA Engineer with expertise in TDD and date/time testing | Task: Write comprehensive unit tests for date utility functions including generateDateRange (本日から7日分), formatDate (Japanese locale: 2025年12月5日), and date validation, covering edge cases | Restrictions: Must follow TDD red-green-refactor cycle, test edge cases (leap years, month boundaries), use date-fns for implementation expectations | Success: Test suite defined with all edge cases, tests initially fail (red phase), clear expectations for implementation, covers requirement 1 scenarios_
 
-- [ ] 2.1.2 日付ユーティリティの実装
+- [x] 2.1.2 日付ユーティリティの実装
   - ファイル: src/lib/utils/date.ts
   - generateDateRange: 本日から指定日数分の配列生成
   - formatDate: 日本語ロケールでのフォーマット
@@ -94,7 +94,7 @@
 
 ### 2.2 バリデーションユーティリティの実装
 
-- [ ] 2.2.1 バリデーションユーティリティのテスト作成
+- [x] 2.2.1 バリデーションユーティリティのテスト作成
   - ファイル: src/lib/utils/__tests__/validation.test.ts
   - 検索パラメータバリデーションのテストケース作成
   - 時間範囲バリデーションのテストケース作成
@@ -102,7 +102,7 @@
   - _要件: 要件1（日付と時間帯による検索）_
   - _プロンプト: Role: QA Engineer specializing in input validation and edge case testing | Task: Write unit tests for validation functions including validateSearchParams (empty dates error, past date warning), validateTimeRange (From must be before To), covering all error scenarios | Restrictions: Must test both success and failure cases, validate error messages are user-friendly in Japanese, test boundary conditions | Success: Validation test suite complete, covers all error scenarios from requirement 1, tests fail initially (red phase), clear validation expectations defined_
 
-- [ ] 2.2.2 バリデーションユーティリティの実装
+- [x] 2.2.2 バリデーションユーティリティの実装
   - ファイル: src/lib/utils/validation.ts
   - validateSearchParams: 日付配列の検証
   - validateTimeRange: 時間範囲の検証
@@ -112,7 +112,7 @@
 
 ### 2.3 時間範囲フィルタリングの実装
 
-- [ ] 2.3.1 時間範囲フィルタリングのテスト作成
+- [x] 2.3.1 時間範囲フィルタリングのテスト作成
   - ファイル: src/lib/utils/__tests__/timeFilter.test.ts
   - filterTimeSlots関数のテストケース作成
   - 時間範囲マッチングのテストケース作成
@@ -120,7 +120,7 @@
   - _要件: 要件1（日付と時間帯による検索）_
   - _プロンプト: Role: QA Engineer with expertise in time-based filtering logic | Task: Write unit tests for filterTimeSlots function that filters TimeSlot[] based on optional TimeRange (From-To), including no filter (returns all), exact match, partial overlap scenarios | Restrictions: Must test edge cases (midnight, 30-minute increments), verify empty results when no matches, test with undefined TimeRange | Success: Complete test coverage for time filtering, all edge cases covered, tests fail initially, clear filtering expectations_
 
-- [ ] 2.3.2 時間範囲フィルタリングの実装
+- [x] 2.3.2 時間範囲フィルタリングの実装
   - ファイル: src/lib/utils/timeFilter.ts
   - filterTimeSlots: TimeSlot配列のフィルタリング
   - isTimeInRange: 時刻が範囲内かチェック
