@@ -453,7 +453,7 @@
 
 ### 8.2 統合テストと手動検証
 
-- [-] 8.2.1 API統合テストの作成
+- [x] 8.2.1 API統合テストの作成
   - ファイル: src/app/api/scrape/__tests__/route.test.ts
   - /api/scrape エンドポイントの統合テスト
   - バリデーション、レート制限、エラーハンドリングのテスト
@@ -461,7 +461,7 @@
   - _要件: 要件3（スクレイピング）, 要件5（エラー表示）_
   - _プロンプト: Role: QA Engineer with expertise in API testing and Next.js integration testing | Task: Create integration tests for /api/scrape endpoint testing request validation (empty dates returns 400), rate limiting (returns 429), scraping errors (returns 500), and successful scraping (returns 200 with ScrapeResponse), mocking FacilityScraper | Restrictions: Must mock FacilityScraper for speed, test all HTTP status codes (200, 400, 429, 500), verify response structures match types, test error messages in Japanese, ensure tests are isolated | Success: API integration tests pass, all status codes tested, response structures validated, error messages verified, mocked scraper works reliably_
 
-- [-] 8.2.2 コンポーネントのテスト作成
+- [x] 8.2.2 コンポーネントのテスト作成
   - ファイル: src/components/__tests__/*.test.tsx
   - 主要コンポーネント（SearchForm, FacilityCard）のテスト
   - ユーザーインタラクションのテスト
@@ -469,7 +469,7 @@
   - _要件: 要件1（検索フォーム）, 要件2（結果表示）_
   - _プロンプト: Role: Frontend QA Engineer with expertise in React Testing Library and component testing | Task: Create component tests for SearchForm (form submission, validation errors, loading state) and FacilityCard (rendering availability, expand/collapse), using React Testing Library and user interaction simulations | Restrictions: Must use React Testing Library and @testing-library/user-event, test user interactions (clicks, form inputs), verify UI updates, test accessibility (roles, labels), avoid testing implementation details | Success: Component tests pass, user interactions tested, UI updates verified, accessibility checked, tests are maintainable and follow best practices_
 
-- [-] 8.2.3 手動E2Eテスト手順書の作成
+- [x] 8.2.3 手動E2Eテスト手順書の作成
   - ファイル: docs/testing/e2e-manual.md
   - 手動テストシナリオの文書化
   - モバイルデバイスでのテスト手順
