@@ -510,7 +510,7 @@
 
 ### 9.1 Vercelデプロイ設定
 
-- [ ] 9.1.1 next.config.js の最適化
+- [x] 9.1.1 next.config.js の最適化
   - ファイル: next.config.js
   - Puppeteer用のserverComponentsExternalPackages設定
   - ビルド最適化設定
@@ -519,7 +519,7 @@
   - _要件: 非機能要件（パフォーマンス）_
   - _プロンプト: Role: DevOps Engineer with expertise in Next.js production optimization and Vercel deployment | Task: Configure next.config.js with production optimizations (reactStrictMode, swcMinify, compress, poweredByHeader: false) and Puppeteer configuration (experimental.serverComponentsExternalPackages: ['puppeteer']) for Vercel deployment | Restrictions: Must enable all recommended optimizations, configure Puppeteer for serverless, ensure compatibility with Next.js 15 and Vercel, maintain security settings, optimize bundle size | Success: next.config.js configured correctly, Puppeteer works in Vercel environment, optimizations enabled, builds successfully, bundle size minimized_
 
-- [ ] 9.1.2 vercel.json の作成
+- [x] 9.1.2 vercel.json の作成
   - ファイル: vercel.json
   - ビルドコマンドの設定
   - リージョン設定（hnd1）
@@ -530,7 +530,7 @@
 
 ### 9.2 パフォーマンス最適化
 
-- [ ] 9.2.1 バンドルサイズの最適化
+- [-] 9.2.1 バンドルサイズの最適化
   - ファイル: 各種コンポーネントファイル
   - Dynamic Importの検討と実装
   - Tree Shakingの確認
@@ -538,7 +538,7 @@
   - _要件: 非機能要件（パフォーマンス）_
   - _プロンプト: Role: Performance Engineer with expertise in bundle size optimization and code splitting | Task: Analyze bundle size, implement dynamic imports for heavy components (DatePicker, FacilityCard if needed), verify tree shaking works for all dependencies, ensure total bundle <300KB gzipped, using Next.js bundle analyzer | Restrictions: Must keep bundle under 300KB gzipped, use next/dynamic for code splitting where beneficial, verify no unused dependencies, maintain functionality, use @next/bundle-analyzer for analysis | Success: Bundle size under 300KB gzipped, dynamic imports implemented strategically, tree shaking verified, no unused dependencies, bundle analyzer report shows optimization_
 
-- [ ] 9.2.2 画像とフォントの最適化
+- [-] 9.2.2 画像とフォントの最適化
   - ファイル: src/app/layout.tsx, 各種コンポーネント
   - next/fontの最適化確認
   - next/imageの適用（画像がある場合）
@@ -548,7 +548,7 @@
 
 ### 9.3 Lighthouseテストと最終調整
 
-- [ ] 9.3.1 Lighthouseパフォーマンステスト
+- [-] 9.3.1 Lighthouseパフォーマンステスト
   - ファイル: N/A（テスト実行）
   - Lighthouse Mobileスコアの測定
   - パフォーマンス指標の確認（FCP, LCP）
@@ -556,7 +556,7 @@
   - _要件: 非機能要件（パフォーマンス）_
   - _プロンプト: Role: Performance QA Engineer with expertise in Lighthouse and Core Web Vitals | Task: Run Lighthouse tests on deployed Vercel preview (mobile configuration), verify Performance score 90+, FCP <1.8s, LCP <2.5s, identify and document any issues for optimization, create performance report | Restrictions: Must test on mobile configuration, test on real Vercel deployment (not localhost), verify all Core Web Vitals meet targets, test multiple pages (/home, /results), document all metrics | Success: Lighthouse Performance score 90+, FCP <1.8s, LCP <2.5s achieved, all issues documented, performance report created, meets non-functional requirements_
 
-- [ ] 9.3.2 アクセシビリティとSEOの確認
+- [-] 9.3.2 アクセシビリティとSEOの確認
   - ファイル: 各種コンポーネントファイル
   - Lighthouse Accessibilityスコアの確認
   - セマンティックHTML、ARIA属性の確認
@@ -564,7 +564,7 @@
   - _要件: 非機能要件（ユーザビリティ）_
   - _プロンプト: Role: Accessibility Specialist with expertise in WCAG and semantic HTML | Task: Run Lighthouse accessibility audit, verify semantic HTML usage (header, nav, main, section), check ARIA labels on interactive elements, ensure color contrast 4.5:1+, verify keyboard navigation works, fix any accessibility issues found | Restrictions: Must achieve Lighthouse Accessibility score 90+, use semantic HTML5 elements, add ARIA labels where needed, ensure 4.5:1 contrast ratio, test keyboard navigation (tab, enter), fix all identified issues | Success: Lighthouse Accessibility score 90+, semantic HTML used correctly, ARIA labels present, contrast ratio meets standard, keyboard navigation works, no critical accessibility issues_
 
-- [ ] 9.3.3 モバイルデバイス実機テスト
+- [-] 9.3.3 モバイルデバイス実機テスト
   - ファイル: N/A（手動テスト）
   - iOS Safari 14+ での動作確認
   - Android Chrome 90+ での動作確認
