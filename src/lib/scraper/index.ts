@@ -36,91 +36,78 @@ export class FacilityScraper {
     timeRange?: TimeRange
   ): Promise<FacilityAvailability[]> {
     try {
+      console.log('🚀 スクレイピング開始: 4ステップフロー');
+      console.log(`📅 対象日数: ${dates.length}日`);
+      if (timeRange) {
+        console.log(`⏰ 時間範囲: ${timeRange.from} - ${timeRange.to}`);
+      }
+
       await this.initBrowser();
       const page = await this.browser!.newPage();
 
-      // ダイアログを自動的に受け入れる（「ページから離れますか？」を自動でOK）
-      page.on('dialog', async dialog => {
+      // ダイアログを自動的に受け入れる
+      page.on('dialog', async (dialog) => {
         console.log('ダイアログ検出:', dialog.message());
         await dialog.accept();
       });
 
-      // ページナビゲーション
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // Step 1: 検索ページへナビゲート + スポーツ選択 + 検索
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      console.log('\n📍 Step 1: 検索ページへアクセス');
       await this.navigateToSearchPage(page);
-
-      // スポーツ種目選択（バスケットボール、ミニバスケットボール）
       await this.selectSports(page);
-
-      // 検索ボタンをクリックして施設一覧ページへ遷移
       await this.searchFacilities(page);
 
-      // 施設一覧取得
-      const facilities = await this.selectAllFacilities(page);
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // Step 2: 全施設を選択して施設別空き状況ページへ遷移
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      console.log('\n📍 Step 2: 全施設を選択');
+      await this.selectAllFacilitiesAndNavigate(page);
 
-      console.log(`\n🏢 取得した施設数: ${facilities.length}件`);
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // Step 3: 日付を選択して時間帯別空き状況ページへ遷移
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      console.log('\n📍 Step 3: 日付を選択');
+      await this.selectDatesOnFacilityCalendar(page, dates);
 
-      // 各施設の空き状況をスクレイピング（Phase 2対応）
-      const results: FacilityAvailability[] = [];
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // Step 4: 時間帯別空き状況データを一括取得
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      console.log('\n📍 Step 4: 時間帯別空き状況を取得');
+      let results = await this.scrapeTimeSlots(page, dates);
 
-      for (let i = 0; i < facilities.length; i++) {
-        const facility = facilities[i];
-        console.log(`\n📍 施設 ${i + 1}/${facilities.length}: ${facility.name}`);
-
-        try {
-          // Phase 2: 各施設の空き状況を取得
-          const availability = await this.scrapeAvailability(
-            page,
-            facility,
-            dates,
-            timeRange
-          );
-          
-          results.push({ facility, availability });
-
-          // 最後の施設以外は施設一覧ページに戻る
-          if (i < facilities.length - 1) {
-            console.log('🔙 施設一覧ページに戻ります...');
-            
-            // 日付選択ページに戻る(scrapeAvailabilityの最後の状態)
-            await page.goBack({ timeout: 10000, waitUntil: 'networkidle0' });
-            
-            // 施設一覧ページに戻る
-            await page.goBack({ timeout: 10000, waitUntil: 'networkidle0' });
-            
-            console.log('✅ 施設一覧ページに戻りました');
-            
-            // ページの状態が安定するまで少し待機
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          }
-        } catch (facilityError) {
-          console.error(`❌ 施設「${facility.name}」の処理に失敗:`, facilityError);
-          // 施設ごとのエラーは記録して続行
-          results.push({ 
-            facility, 
-            availability: [] 
-          });
-          
-          // エラーが発生した場合も施設一覧ページに戻ろうと試みる
-          if (i < facilities.length - 1) {
-            try {
-              console.log('🔙 エラー後に施設一覧ページに戻ります...');
-              // 現在のページ状態に応じて適切に戻る
-              await page.goBack({ timeout: 10000, waitUntil: 'networkidle0' });
-              await page.goBack({ timeout: 10000, waitUntil: 'networkidle0' });
-            } catch (backError) {
-              console.error('施設一覧ページへの復帰に失敗:', backError);
-              // 復帰できない場合は処理を中断
-              break;
-            }
-          }
-        }
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // 時間範囲フィルタリング（オプション）
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      if (timeRange) {
+        console.log('\n🔍 時間範囲フィルタリング適用中...');
+        results = results.map((facilityData) => ({
+          ...facilityData,
+          availability: facilityData.availability.map((dateData) => ({
+            ...dateData,
+            slots: dateData.slots.filter((slot) => {
+              const [start] = slot.time.split('-');
+              return start >= timeRange.from && start <= timeRange.to;
+            }),
+          })),
+        }));
+        console.log('✅ 時間範囲フィルタリング完了');
       }
 
-      console.log(`\n✅ スクレイピング完了: ${results.length}/${facilities.length}施設`);
+      console.log(`\n✅ スクレイピング完了: ${results.length}施設`);
       return results;
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error('❌ スクレイピングエラー:', error.message);
+        throw new Error(`スクレイピングに失敗しました: ${error.message}`);
+      }
+      throw new Error('スクレイピングに失敗しました');
     } finally {
       // ブラウザは必ずクリーンアップ
+      console.log('\n🧹 ブラウザをクリーンアップ中...');
       await this.closeBrowser();
+      console.log('✅ クリーンアップ完了');
     }
   }
 
@@ -378,439 +365,361 @@ export class FacilityScraper {
   }
 
   /**
-   * 施設を選択して日付選択ページへ遷移
-   * Phase 2: 施設一覧ページ → 日付選択ページ
-   *
-   * @param page - Puppeteerページインスタンス
-   * @param facilityId - 施設ID (例: "341007")
+   * 全施設を選択して施設別空き状況ページへ遷移
+   * 
+   * Step 2 → Step 3 への遷移を実行します。
+   * 
+   * @param page Puppeteerページオブジェクト
+   * @throws {Error} 施設が見つからない場合、選択に失敗した場合
+   * 
+   * @design
+   * - labelをクリックすることで確実にチェックボックスを選択
+   * - checkbox.checked = true は動作しないため使用しない
+   * - DOM更新を待機（500ms）
+   * - 選択状態を検証
+   * 
+   * @see docs/design/scraping-flow-design.md (Step 2)
    */
-  private async selectFacilityAndNavigate(
-    page: Page,
-    facilityId: string
-  ): Promise<void> {
+  async selectAllFacilitiesAndNavigate(page: Page): Promise<void> {
     try {
-      console.log(`施設選択: ID=${facilityId}`);
+      console.log('📍 全施設を選択中...');
 
-      // 施設のチェックボックスを選択
-      await page.evaluate((id) => {
-        const checkbox = document.querySelector(
-          `#checkShisetsu${id}`
-        ) as HTMLInputElement;
-        if (!checkbox) {
-          throw new Error(`施設チェックボックスが見つかりません: checkShisetsu${id}`);
-        }
-        checkbox.checked = true;
-        checkbox.click(); // onclickイベントを発火
-      }, facilityId);
-
-      console.log('✅ 施設を選択しました');
-
-      // 少し待機（UIの更新を待つ）
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // 「次へ進む」ボタンの存在確認
-      const nextButtonExists = await page.evaluate(() => {
-        const btn = document.querySelector('#btnNext') as HTMLElement;
-        return {
-          exists: !!btn,
-          visible: btn ? window.getComputedStyle(btn).display !== 'none' : false,
-        };
+      // 施設チェックボックスが表示されるまで待機
+      await page.waitForSelector('.shisetsu input[type="checkbox"][name="checkShisetsu"]', {
+        timeout: 10000,
       });
 
-      if (!nextButtonExists.exists) {
-        throw new Error('「次へ進む」ボタンが見つかりません');
+      // 全施設のチェックボックスを取得して選択
+      await page.evaluate(() => {
+        const checkboxes = Array.from(
+          document.querySelectorAll(
+            '.shisetsu input[type="checkbox"][name="checkShisetsu"]'
+          )
+        ) as HTMLInputElement[];
+
+        checkboxes.forEach((checkbox) => {
+          // labelをクリックすることで確実に選択
+          // checkbox.checked = true は動作しないため使用しない
+          const label = document.querySelector(
+            `label[for="${checkbox.id}"]`
+          ) as HTMLElement;
+
+          if (label) {
+            label.click();
+          }
+        });
+      });
+
+      // DOM更新を待機
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // 選択状態の確認
+      const selectedCount = await page.evaluate(() => {
+        const checkboxes = Array.from(
+          document.querySelectorAll(
+            '.shisetsu input[type="checkbox"][name="checkShisetsu"]'
+          )
+        ) as HTMLInputElement[];
+
+        return checkboxes.filter((cb) => cb.checked).length;
+      });
+
+      if (selectedCount === 0) {
+        throw new Error('施設の選択に失敗しました');
       }
 
-      if (!nextButtonExists.visible) {
-        throw new Error('「次へ進む」ボタンが表示されていません');
-      }
+      console.log(`✅ ${selectedCount}件の施設を選択しました`);
 
-      console.log('「次へ進む」ボタンをクリックします...');
-
-      // ページ遷移を待機しながら「次へ進む」ボタンをクリック
+      // 「次へ進む」ボタンをクリック
+      console.log('📍 施設別空き状況ページへ遷移中...');
+      
       await Promise.all([
-        page.waitForNavigation({
-          waitUntil: 'networkidle0',
-          timeout: 10000,
-        }),
-        page.click('#btnNext'),
+        page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 10000 }),
+        page.click('.navbar .next > a'),
       ]);
 
-      console.log('✅ 日付選択ページへ遷移しました');
-      console.log('現在のURL:', page.url());
+      // URLの確認
+      const currentUrl = page.url();
+      if (!currentUrl.includes('WgR_ShisetsubetsuAkiJoukyou')) {
+        throw new Error(`予期しないページに遷移しました: ${currentUrl}`);
+      }
+
+      console.log('✅ 施設別空き状況ページへ遷移完了');
     } catch (error) {
       if (error instanceof Error) {
-        throw new Error(
-          `施設選択とナビゲーションに失敗: ${error.message}`
-        );
+        throw new Error(`施設選択とナビゲーションに失敗しました: ${error.message}`);
       }
       throw new Error('施設選択とナビゲーションに失敗しました');
     }
   }
 
   /**
-   * 日付を選択して空き状況ページへ遷移
-   * Phase 2: 日付選択ページ → 空き状況ページ
-   *
-   * @param page - Puppeteerページインスタンス
-   * @param targetDate - 選択する日付
+   * 施設別空き状況ページで日付を選択して時間帯別空き状況ページへ遷移
+   * 
+   * Step 3 → Step 4 への遷移を実行します。
+   * 
+   * @param page Puppeteerページオブジェクト
+   * @param dates 取得対象の日付配列（最大10日）
+   * @throws {Error} 日付が10日を超える場合、日付選択に失敗した場合
+   * 
+   * @design
+   * - 日付をYYYYMMDD形式に変換
+   * - checkbox.valueの最初の8文字でマッチング
+   * - ○（空きあり）または△（一部空き）のみ選択
+   * - 最大10日までの制限を検証
+   * - labelをクリックして選択
+   * 
+   * @see docs/design/scraping-flow-design.md (Step 3)
    */
-  private async selectDateAndNavigate(
-    page: Page,
-    targetDate: Date
-  ): Promise<void> {
+  async selectDatesOnFacilityCalendar(page: Page, dates: Date[]): Promise<void> {
     try {
-      const year = targetDate.getFullYear();
-      const month = targetDate.getMonth(); // 0-indexed
-      const day = targetDate.getDate();
+      console.log('📍 施設別空き状況ページで日付を選択中...');
 
-      console.log(`日付選択: ${year}年${month + 1}月${day}日`);
-
-      // 複数のセレクタパターンを試す
-      const dateSelected = await page.evaluate(
-        (y, m, d) => {
-          // パターン1: data-date属性 (yyyy-mm-dd形式)
-          const dateStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-          let dateElement = document.querySelector(
-            `[data-date="${dateStr}"]`
-          ) as HTMLElement;
-
-          if (dateElement) {
-            console.log(`日付要素を発見 (data-date): ${dateStr}`);
-            dateElement.click();
-            return true;
-          }
-
-          // パターン2: jQuery UI Datepicker
-          dateElement = document.querySelector(
-            `td[data-year="${y}"][data-month="${m}"] a[data-date="${d}"]`
-          ) as HTMLElement;
-
-          if (dateElement) {
-            console.log(`日付要素を発見 (jQuery UI)`);
-            dateElement.click();
-            return true;
-          }
-
-          // パターン3: カスタムカレンダー (data-dateにdd形式)
-          const dayStr = String(d).padStart(2, '0');
-          dateElement = document.querySelector(
-            `td[data-date="${dayStr}"], a[data-date="${dayStr}"]`
-          ) as HTMLElement;
-
-          if (dateElement) {
-            console.log(`日付要素を発見 (day only): ${dayStr}`);
-            dateElement.click();
-            return true;
-          }
-
-          // パターン4: クリック可能な日付セル (textContentで検索)
-          const dateCells = Array.from(
-            document.querySelectorAll('td.date-cell, td.calendar-day, td[class*="day"]')
-          );
-          for (const cell of dateCells) {
-            if (cell.textContent?.trim() === String(d)) {
-              console.log(`日付要素を発見 (textContent): ${d}`);
-              (cell as HTMLElement).click();
-              return true;
-            }
-          }
-
-          return false;
-        },
-        year,
-        month,
-        day
-      );
-
-      if (!dateSelected) {
-        throw new Error(
-          `日付要素が見つかりません: ${year}-${month + 1}-${day}`
-        );
+      // 日付数の検証
+      if (dates.length > 10) {
+        throw new Error('最大10日まで選択可能です');
       }
 
-      console.log('✅ 日付を選択しました');
-
-      // 少し待機（UIの更新を待つ）
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // 検索/次へボタンを探してクリック
-      const buttonClicked = await page.evaluate(() => {
-        // ボタンのパターン
-        const selectors = [
-          '#btnSearch',
-          '#btnNext',
-          'input[type="button"][value*="検索"]',
-          'button[type="submit"]',
-          'a.btnBlue',
-        ];
-
-        for (const selector of selectors) {
-          const btn = document.querySelector(selector) as HTMLElement;
-          if (btn && window.getComputedStyle(btn).display !== 'none') {
-            console.log(`ボタンをクリック: ${selector}`);
-            btn.click();
-            return true;
-          }
-        }
-
-        return false;
+      // 日付チェックボックスが表示されるまで待機
+      await page.waitForSelector('input[type="checkbox"][name="checkdate"]', {
+        timeout: 10000,
       });
 
-      if (!buttonClicked) {
-        // ボタンがない場合、自動遷移を待つ
-        console.log('検索ボタンが見つからないため、自動遷移を待機します...');
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-      } else {
-        // ページ遷移を待機
-        await page.waitForNavigation({
-          waitUntil: 'networkidle0',
-          timeout: 10000,
+      // 対象日付をYYYYMMDD形式に変換
+      const targetDateStrings = dates.map((date) => format(date, 'yyyyMMdd'));
+
+      // 日付を選択
+      const selectedCount = await page.evaluate((targetDates) => {
+        const checkboxes = Array.from(
+          document.querySelectorAll('input[type="checkbox"][name="checkdate"]')
+        ) as HTMLInputElement[];
+
+        let count = 0;
+
+        checkboxes.forEach((checkbox) => {
+          // valueの最初の8文字が日付（YYYYMMDD）
+          const checkboxDate = checkbox.value.substring(0, 8);
+
+          if (targetDates.includes(checkboxDate)) {
+            // 対応するlabelを取得
+            const label = document.querySelector(
+              `label[for="${checkbox.id}"]`
+            ) as HTMLElement;
+
+            if (label) {
+              const status = label.textContent?.trim();
+
+              // ○（空きあり）または△（一部空き）のみ選択
+              // ×（空きなし）、－（対象外）、休（休館日）は選択しない
+              if (status === '○' || status === '△') {
+                label.click();
+                count++;
+              } else {
+                console.log(`⏭️  ${checkboxDate}: ${status} - スキップ`);
+              }
+            }
+          }
         });
+
+        return count;
+      }, targetDateStrings);
+
+      if (selectedCount === 0) {
+        throw new Error('選択可能な日付がありません（全て×、－、または休の可能性があります）');
       }
 
-      console.log('✅ 空き状況ページへ遷移しました');
-      console.log('現在のURL:', page.url());
+      console.log(`✅ ${selectedCount}日を選択しました`);
+
+      // DOM更新を待機
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // 「次へ進む」ボタンをクリック
+      console.log('📍 時間帯別空き状況ページへ遷移中...');
+
+      await Promise.all([
+        page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 10000 }),
+        page.click('.navbar .next > a'),
+      ]);
+
+      // URLの確認
+      const currentUrl = page.url();
+      if (!currentUrl.includes('WgR_JikantaibetsuAkiJoukyou')) {
+        throw new Error(`予期しないページに遷移しました: ${currentUrl}`);
+      }
+
+      console.log('✅ 時間帯別空き状況ページへ遷移完了');
     } catch (error) {
       if (error instanceof Error) {
-        throw new Error(`日付選択とナビゲーションに失敗: ${error.message}`);
+        throw new Error(`日付選択とナビゲーションに失敗しました: ${error.message}`);
       }
       throw new Error('日付選択とナビゲーションに失敗しました');
     }
   }
 
   /**
-   * 空き状況ページから時間帯データを取得
-   * Phase 2: 空き状況ページでのデータ抽出
-   *
-   * @param page - Puppeteerページインスタンス
-   * @param targetDate - 対象日付
-   * @returns 時間帯ごとの空き状況
+   * 時間帯別空き状況ページから全施設の空き状況を一括取得
+   * 
+   * Step 4 のデータ取得を実行します。
+   * 
+   * @param page Puppeteerページオブジェクト
+   * @param dates 取得対象の日付配列（選択した日付と同じ）
+   * @returns 全施設の空き状況データ
+   * @throws {Error} データ取得に失敗した場合
+   * 
+   * @design
+   * - 各施設のカレンダーテーブル（.item .calendar）をパース
+   * - 施設名は .item h3 から取得
+   * - コート名は tr .shisetsu から取得
+   * - 時間帯は8:30開始、30分刻みでindex計算
+   * - ○ = available: true、その他 = available: false
+   * 
+   * @see docs/design/scraping-flow-design.md (Step 4)
    */
-  private async scrapeAvailabilityFromPage(
-    page: Page,
-    targetDate: Date
-  ): Promise<TimeSlot[]> {
+  async scrapeTimeSlots(page: Page, dates: Date[]): Promise<FacilityAvailability[]> {
     try {
-      console.log('空き状況ページからデータを取得中...');
+      console.log('📍 時間帯別空き状況データを取得中...');
 
-      // テーブルが表示されるまで待機（複数のパターンを試す）
-      const tableFound = await page
-        .waitForSelector('table.availability-table, table#availability, table tbody tr', {
-          timeout: 5000,
-        })
-        .then(() => true)
-        .catch(() => false);
+      // カレンダーが表示されるまで待機
+      await page.waitForSelector('.item .calendar', { timeout: 10000 });
 
-      if (!tableFound) {
-        console.log('⚠️ 時間帯テーブルが見つかりません（空きデータなし）');
-        return [];
-      }
+      // 全施設のデータを取得
+      const facilitiesData = await page.evaluate((targetDates: string[]) => {
+        const items = Array.from(document.querySelectorAll('.item'));
+        
+        return items.map((item) => {
+          // 施設名を取得
+          const facilityNameElement = item.querySelector('h3');
+          const facilityName = facilityNameElement?.textContent?.trim() || '';
 
-      // 時間帯データをパース
-      const timeSlots = await page.evaluate(() => {
-        // テーブル行を取得（複数のセレクタパターンを試す）
-        const rows = Array.from(
-          document.querySelectorAll(
-            'table.availability-table tbody tr, table#availability tbody tr, table tbody tr'
-          )
-        );
-
-        if (rows.length === 0) {
-          console.log('テーブル行が見つかりません');
-          return [];
-        }
-
-        const slots: Array<{ time: string; available: boolean }> = [];
-
-        for (const row of rows) {
-          // 時刻セルを探す（複数のパターン）
-          const timeCellSelectors = ['td.time', 'td:first-child', 'th.time'];
-          let timeText = '';
-          for (const selector of timeCellSelectors) {
-            const cell = row.querySelector(selector);
-            if (cell) {
-              timeText = cell.textContent?.trim() || '';
-              if (timeText) break;
-            }
+          // カレンダーテーブルを取得
+          const calendar = item.querySelector('.calendar');
+          if (!calendar) {
+            return null;
           }
 
-          // ステータスセルを探す
-          const statusCellSelectors = ['td.status', 'td:nth-child(2)', 'td:last-child'];
-          let statusText = '';
-          for (const selector of statusCellSelectors) {
-            const cell = row.querySelector(selector);
-            if (cell) {
-              statusText = cell.textContent?.trim() || '';
-              if (statusText) break;
-            }
-          }
+          // 日付ヘッダーを取得（横スクロール可能なので全て取得）
+          const dateHeaders = Array.from(
+            calendar.querySelectorAll('thead th')
+          ).slice(1); // 最初のthは「施設」列なのでスキップ
 
-          // 時刻のパース
-          if (!timeText) continue;
-
-          // "8:30 - 9:00" 形式から開始時刻を抽出
-          let startTime = timeText.split('-')[0]?.trim() || '';
-
-          // "HH:MM" 形式に正規化
-          if (startTime.match(/^\d{1,2}:\d{2}$/)) {
-            const [h, m] = startTime.split(':');
-            startTime = `${h.padStart(2, '0')}:${m}`;
-          }
-
-          if (!startTime) continue;
-
-          // ステータスの判定
-          // ○ = 空き, △ = 一部空き (空きとして扱う), × = 空いていない, - = 対象外
-          const available = statusText === '○' || statusText === '△';
-
-          slots.push({
-            time: startTime,
-            available,
-          });
-        }
-
-        console.log(`${slots.length}件の時間帯を取得しました`);
-        return slots;
-      });
-
-      if (timeSlots.length === 0) {
-        console.log('⚠️ 時間帯データが取得できませんでした');
-        return [];
-      }
-
-      console.log(`✅ ${timeSlots.length}件の時間帯データを取得しました`);
-
-      return timeSlots;
-    } catch (error) {
-      // エラーでも空配列を返す（施設によってはデータがない可能性）
-      console.error('空き状況の取得中にエラーが発生:', error);
-      return [];
-    }
-  }
-
-  /**
-   * ブラウザの戻るボタンで前のページに戻る
-   * Phase 2: 空き状況ページ → 日付選択ページ
-   *
-   * @param page - Puppeteerページインスタンス
-   */
-  private async navigateBack(page: Page): Promise<void> {
-    try {
-      console.log('前のページに戻ります...');
-
-      // ブラウザの戻るボタンを使用してナビゲーション
-      await Promise.all([
-        page.waitForNavigation({
-          waitUntil: 'networkidle0',
-          timeout: 10000,
-        }),
-        page.goBack(),
-      ]);
-
-      console.log('✅ 前のページに戻りました');
-      console.log('現在のURL:', page.url());
-    } catch (error) {
-      if (error instanceof Error) {
-        throw new Error(`戻るナビゲーションに失敗: ${error.message}`);
-      }
-      throw new Error('戻るナビゲーションに失敗しました');
-    }
-  }
-
-  /**
-   * 空き状況のスクレイピング
-   *
-   * @param page - Puppeteerページインスタンス
-   * @param facility - 施設情報
-   * @param dates - 検索対象の日付配列
-   * @param timeRange - オプションの時間範囲フィルタ
-   * @returns 日付ごとの空き状況データ
-   */
-  /**
-   * Phase 2: 完全な空き状況スクレイピングフロー
-   * 施設選択 → 日付選択 → 空き状況取得 → 複数日対応
-   *
-   * @param page - Puppeteerページインスタンス
-   * @param facility - 施設情報
-   * @param dates - 検索対象の日付配列
-   * @param timeRange - 時間範囲フィルタ（オプション）
-   * @returns 日付ごとの空き状況データ
-   */
-  async scrapeAvailability(
-    page: Page,
-    facility: Facility,
-    dates: Date[],
-    timeRange?: TimeRange
-  ): Promise<AvailabilityData[]> {
-    const results: AvailabilityData[] = [];
-
-    try {
-      console.log(`\n📋 施設「${facility.name}」の空き状況を取得します`);
-      console.log(`対象日数: ${dates.length}日`);
-
-      // Step 1: 施設を選択して日付選択ページへ遷移
-      await this.selectFacilityAndNavigate(page, facility.id);
-
-      // Step 2: 各日付に対して空き状況を取得
-      for (let i = 0; i < dates.length; i++) {
-        const targetDate = dates[i];
-        console.log(`\n📅 日付 ${i + 1}/${dates.length}: ${targetDate.toISOString().split('T')[0]}`);
-
-        try {
-          // 日付を選択して空き状況ページへ遷移
-          await this.selectDateAndNavigate(page, targetDate);
-
-          // 空き状況データを取得
-          const slots = await this.scrapeAvailabilityFromPage(page, targetDate);
-
-          // 時間範囲でフィルタリング
-          let filteredSlots = slots;
-          if (timeRange) {
-            console.log(`⏰ 時間範囲フィルタを適用: ${timeRange.from} 〜 ${timeRange.to}`);
-            filteredSlots = slots.filter((slot) => {
-              return slot.time >= timeRange.from && slot.time <= timeRange.to;
+          // 各コート（行）のデータを取得
+          const rows = Array.from(calendar.querySelectorAll('tbody tr'));
+          
+          // 日付ごとにデータを整理
+          const dateAvailability = targetDates.map((dateStr) => {
+            // この日付のカラムインデックスを探す
+            const dateIndex = dateHeaders.findIndex((th) => {
+              const headerText = th.textContent?.trim() || '';
+              // ヘッダーは "12/11" のような形式
+              const match = headerText.match(/(\d+)\/(\d+)/);
+              if (!match) return false;
+              
+              const [_, month, day] = match;
+              const headerDateStr = `${new Date().getFullYear()}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+              return headerDateStr === dateStr;
             });
-            console.log(`フィルタ後: ${filteredSlots.length}件`);
-          }
 
-          // 結果を追加
-          const dateObj = new Date(targetDate);
-          dateObj.setHours(0, 0, 0, 0);
+            if (dateIndex === -1) {
+              return null;
+            }
 
-          results.push({
-            date: dateObj,
-            slots: filteredSlots,
-          });
+            // 各コートの時間帯データを取得
+            const courts = rows.map((row) => {
+              const courtNameElement = row.querySelector('.shisetsu');
+              const courtName = courtNameElement?.textContent?.trim() || '';
 
-          // 最後の日付以外は日付選択ページに戻る
-          if (i < dates.length - 1) {
-            await this.navigateBack(page);
-          }
-        } catch (dateError) {
-          console.error(
-            `日付 ${targetDate.toISOString().split('T')[0]} の処理中にエラー:`,
-            dateError
-          );
-          // エラーが発生しても次の日付の処理は続行
-          // 空のデータを追加
-          const dateObj = new Date(targetDate);
-          dateObj.setHours(0, 0, 0, 0);
-          results.push({
-            date: dateObj,
-            slots: [],
-          });
-        }
-      }
+              // この日付の列のセルを全て取得
+              const cells = Array.from(row.querySelectorAll('td')).slice(1); // 最初のtdは施設名なのでスキップ
+              const dateCells = cells.slice(dateIndex * 28, (dateIndex + 1) * 28); // 1日あたり28コマ（8:30-22:00, 30分刻み）
 
-      console.log(`\n✅ 施設「${facility.name}」の取得完了: ${results.length}日分`);
+              const timeSlots = dateCells.map((cell, index) => {
+                const label = cell.querySelector('label');
+                const status = label?.textContent?.trim() || '';
+
+                // 時刻を計算（8:30開始、30分刻み）
+                const startMinutes = 8 * 60 + 30 + index * 30;
+                const startHour = Math.floor(startMinutes / 60);
+                const startMin = startMinutes % 60;
+                
+                const endMinutes = startMinutes + 30;
+                const endHour = Math.floor(endMinutes / 60);
+                const endMin = endMinutes % 60;
+
+                const time = `${startHour}:${String(startMin).padStart(2, '0')}-${endHour}:${String(endMin).padStart(2, '0')}`;
+
+                return {
+                  time,
+                  available: status === '○',
+                };
+              });
+
+              return {
+                name: courtName,
+                timeSlots,
+              };
+            });
+
+            return {
+              date: dateStr,
+              courts,
+            };
+          }).filter(Boolean);
+
+          return {
+            facilityName,
+            dateAvailability,
+          };
+        }).filter(Boolean);
+      }, dates.map((d) => format(d, 'yyyy-MM-dd')));
+
+      // データを FacilityAvailability[] 形式に変換
+      const results: FacilityAvailability[] = facilitiesData
+        .filter((data): data is NonNullable<typeof data> => data !== null)
+        .map((data, index) => {
+          const facility: Facility = {
+            id: `facility-${index}`, // TODO: 実際の施設IDを取得
+            name: data.facilityName,
+            type: 'basketball', // TODO: 施設タイプの判別
+          };
+
+          const availability: AvailabilityData[] = data.dateAvailability
+            .filter((d): d is NonNullable<typeof d> => d !== null)
+            .map((dateData) => {
+              // コートごとの時間帯データを統合
+              // 複数コートある場合は、どれか1つでも空いていれば空きありとする
+              const allTimeSlots = dateData.courts.flatMap((court) => court.timeSlots);
+              const timeSlotMap = new Map<string, boolean>();
+
+              allTimeSlots.forEach((slot) => {
+                const current = timeSlotMap.get(slot.time);
+                // どれか1つでも空いていれば空きありとする
+                timeSlotMap.set(slot.time, current === undefined ? slot.available : current || slot.available);
+              });
+
+              const slots: TimeSlot[] = Array.from(timeSlotMap.entries()).map(
+                ([time, available]) => ({ time, available })
+              );
+
+              return {
+                date: new Date(dateData.date),
+                slots,
+              };
+            });
+
+          return {
+            facility,
+            availability,
+          };
+        });
+
+      console.log(`✅ ${results.length}施設のデータを取得しました`);
+
       return results;
     } catch (error) {
-      console.error(
-        `❌ 施設「${facility.name}」の空き状況取得に失敗:`,
-        error
-      );
-      return [];
+      if (error instanceof Error) {
+        throw new Error(`時間帯別空き状況の取得に失敗しました: ${error.message}`);
+      }
+      throw new Error('時間帯別空き状況の取得に失敗しました');
     }
   }
 
