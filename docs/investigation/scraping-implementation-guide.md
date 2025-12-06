@@ -223,34 +223,54 @@ await page.setUserAgent('Mozilla/5.0 (compatible; UmiFacilitySearch/1.0)');
 - `docs/investigation/step2-indoor-sports.png` - 屋内スポーツ選択後のスクリーンショット
 - `docs/investigation/step3-basketball-selected.png` - バスケットボール選択後のスクリーンショット
 
-## 現在の課題
+## 解決済みの課題
 
-### 課題1: 検索ボタンクリック後の遷移が失敗する
+### ✅ 課題1: チェックボックス選択が反映されない（解決済み）
 
 **症状**:
-- 検索ボタンをクリックしても施設一覧ページに遷移しない
-- URL が `#messageDlg` というハッシュで終わる
-- エラーメッセージ「使用目的を選んでください」が表示される可能性
+- Puppeteerの `label.click()` ではチェックボックスの `.checked` プロパティが `false` のまま
+- `searchMokuteki()` が「使用目的を選んでください」エラーを返す
 
-**原因候補**:
-1. チェックボックスの選択が正しくフォームに反映されていない
-2. JavaScriptのイベントリスナーが正しく発火していない
-3. フォーム送信前にバリデーションが行われている
+**原因**:
+- サイトのJavaScriptが `.checked` プロパティを直接確認している
+- `label.click()` では `.checked` が正しく更新されない
 
-**対策**:
-- [ ] 手動操作で正しいフローを確認する
-- [ ] ブラウザの開発者ツールでネットワークタブを確認
-- [ ] フォーム送信時のPOSTデータを確認
-- [ ] `beforeSubmit` 関数の実装を調査
+**解決策**:
+```typescript
+// .checked プロパティを直接設定
+checkbox505.checked = true;
+checkbox510.checked = true;
 
-### 課題2: 次のページ（施設一覧）の構造が不明
+// イベントを発火
+const changeEvent = new Event('change', { bubbles: true });
+checkbox505.dispatchEvent(changeEvent);
+checkbox510.dispatchEvent(changeEvent);
+```
 
-検索が成功した後のページ構造を調査する必要があります。
+### ✅ 課題2: 「ページから離れますか？」ダイアログ（解決済み）
 
-**調査方法**:
-1. 手動でブラウザ操作して施設一覧ページに到達
-2. HTMLを保存してパース方法を検討
-3. 施設選択後の次のステップを確認
+**症状**:
+- ページ遷移時に `beforeunload` ダイアログが表示される
+- 手動で「離れる」を選択しないと進まない
+
+**解決策**:
+```typescript
+// ダイアログを自動的に受け入れる
+page.on('dialog', async dialog => {
+  await dialog.accept();
+});
+```
+
+### ✅ 課題3: 空き状況の取得方法（解決済み）
+
+**発見**:
+- 施設一覧ページには既に各施設の「本日の予定」が表示されている
+- 施設を選択して別ページに遷移する必要はない
+
+**実装方針**:
+- 施設一覧ページから直接、各施設の予定をスクレイピング
+- 見出し（例: "宇美勤労者体育センターの本日の予定"）を探す
+- その下の `.item_wrap` から部屋/エリアごとの予定を取得
 
 ## 実装の方針
 

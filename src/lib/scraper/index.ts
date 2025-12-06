@@ -39,6 +39,12 @@ export class FacilityScraper {
       await this.initBrowser();
       const page = await this.browser!.newPage();
 
+      // ダイアログを自動的に受け入れる（「ページから離れますか？」を自動でOK）
+      page.on('dialog', async dialog => {
+        console.log('ダイアログ検出:', dialog.message());
+        await dialog.accept();
+      });
+
       // ページナビゲーション
       await this.navigateToSearchPage(page);
 
@@ -52,6 +58,8 @@ export class FacilityScraper {
       const facilities = await this.selectAllFacilities(page);
 
       // 各施設の空き状況をスクレイピング
+      // 施設一覧ページには既に各施設の「本日の予定」が表示されているため、
+      // このページから直接スクレイピングする
       const results: FacilityAvailability[] = [];
 
       for (const facility of facilities) {
@@ -159,18 +167,28 @@ export class FacilityScraper {
       await new Promise(resolve => setTimeout(resolve, 2000));
 
       // バスケットボールとミニバスケットボールを選択
-      // 重要: input要素ではなくlabel要素をクリックする必要がある
+      // 重要: .checked プロパティを直接設定する
       await page.evaluate(() => {
-        const label505 = document.querySelector('label[for="checkPurposeMiddle505"]') as HTMLElement;
-        const label510 = document.querySelector('label[for="checkPurposeMiddle510"]') as HTMLElement;
+        const checkbox505 = document.querySelector('#checkPurposeMiddle505') as HTMLInputElement;
+        const checkbox510 = document.querySelector('#checkPurposeMiddle510') as HTMLInputElement;
 
-        if (!label505 || !label510) {
-          throw new Error('バスケットボールのラベルが見つかりません');
+        if (!checkbox505 || !checkbox510) {
+          throw new Error('バスケットボールのチェックボックスが見つかりません');
         }
 
-        // labelをクリックすることでチェックボックスが選択される
-        label505.click();
-        label510.click();
+        // チェックボックスの .checked プロパティを直接設定
+        checkbox505.checked = true;
+        checkbox510.checked = true;
+
+        // changeイベントを発火（サイトのJavaScriptが依存している可能性があるため）
+        const changeEvent = new Event('change', { bubbles: true });
+        checkbox505.dispatchEvent(changeEvent);
+        checkbox510.dispatchEvent(changeEvent);
+
+        // clickイベントも発火（念のため）
+        const clickEvent = new Event('click', { bubbles: true });
+        checkbox505.dispatchEvent(clickEvent);
+        checkbox510.dispatchEvent(clickEvent);
       });
 
       // 選択が反映されるまで少し待機
@@ -202,6 +220,28 @@ export class FacilityScraper {
    */
   async searchFacilities(page: Page): Promise<void> {
     try {
+      // チェックボックスが選択されているか確認
+      const checkboxState = await page.evaluate(() => {
+        const middleList = document.getElementsByName('checkPurposeMiddle');
+        const checkedValues: string[] = [];
+        for (let i = 0; i < middleList.length; i++) {
+          if ((middleList[i] as HTMLInputElement).checked) {
+            checkedValues.push((middleList[i] as HTMLInputElement).value);
+          }
+        }
+        return {
+          radioSelected: (document.querySelector('input[name="radioPurposeLarge"]:checked') as HTMLInputElement)?.value,
+          checkboxCount: checkedValues.length,
+          checkboxValues: checkedValues,
+        };
+      });
+
+      console.log('検索前のバリデーション状態:', checkboxState);
+
+      if (checkboxState.checkboxCount === 0) {
+        throw new Error('チェックボックスが選択されていません');
+      }
+
       // ページ遷移の待機をセットアップ（クリック前に設定）
       const navigationPromise = page.waitForNavigation({
         waitUntil: 'networkidle0',
@@ -219,11 +259,14 @@ export class FacilityScraper {
         }
       });
 
+      console.log('searchMokuteki()を呼び出しました。ページ遷移を待機中...');
+
       // ページ遷移を待つ
       await navigationPromise;
 
+      console.log('ページ遷移完了。現在のURL:', page.url());
+
       // エラーダイアログが表示されていないか確認
-      // （検索成功の場合はページ遷移するのでこのコードは実行されない）
       const errorMessage = await page.evaluate(() => {
         const dlg = document.querySelector('#messageDlg');
         if (dlg && window.getComputedStyle(dlg).display !== 'none') {
@@ -303,68 +346,112 @@ export class FacilityScraper {
     dates: Date[],
     timeRange?: TimeRange
   ): Promise<AvailabilityData[]> {
-    const availabilityData: AvailabilityData[] = [];
-
-    for (const date of dates) {
-      try {
-        // 日付選択と施設選択（実際のHTML構造に応じて調整）
-        await this.selectDateAndFacility(page, facility, date);
-
-        // 空き状況ページのHTMLを取得
-        const html = await page.content();
-
-        // HTMLパーサーを使用して時間帯の空き情報を抽出
-        const slots = parseAvailability(html);
-
-        // 時間範囲でフィルタリング
-        const filteredSlots = filterTimeSlots(slots, timeRange);
-
-        availabilityData.push({
-          date,
-          slots: filteredSlots,
-        });
-      } catch (error) {
-        // 特定日付の取得に失敗してもスキップして続行
-        console.error(
-          `Failed to scrape availability for ${facility.name} on ${date}:`,
-          error
-        );
-      }
-    }
-
-    return availabilityData;
-  }
-
-  /**
-   * 日付と施設を選択するヘルパーメソッド
-   *
-   * @param page - Puppeteerページインスタンス
-   * @param facility - 施設情報
-   * @param date - 検索対象日付
-   */
-  private async selectDateAndFacility(
-    page: Page,
-    facility: Facility,
-    date: Date
-  ): Promise<void> {
-    // TODO: 実際のHTML構造に合わせてセレクタを調整
+    // 施設一覧ページから直接、本日の予定をスクレイピング
+    // このページには既に各施設の「本日の予定」が表示されている
+    
     try {
-      // 日付選択（実際のUIに応じて実装）
-      const dateString = date.toISOString().split('T')[0];
-      await page.click(`input[data-date="${dateString}"]`);
+      // 施設名を含む見出しを探す（例: "宇美勤労者体育センターの本日の予定"）
+      const facilitySchedule = await page.evaluate((facilityName) => {
+        // 施設名を含むh2要素を探す
+        const headings = Array.from(document.querySelectorAll('h2'));
+        const facilityHeading = headings.find(h => 
+          h.textContent?.includes(facilityName) && h.textContent?.includes('の本日の予定')
+        );
 
-      // 施設選択（実際のUIに応じて実装）
-      await page.click(`input[data-facility-id="${facility.id}"]`);
+        if (!facilityHeading) {
+          return null;
+        }
 
-      // 検索実行ボタンクリック
-      await page.click('.search-button');
+        // この見出しの次にある .item_wrap を取得
+        const itemWrap = facilityHeading.nextElementSibling;
+        if (!itemWrap || !itemWrap.classList.contains('item_wrap')) {
+          return null;
+        }
 
-      // 結果が読み込まれるまで待機
-      await page.waitForSelector('.timeslot-table', { timeout: 10000 });
+        // 各 .item（施設の部屋/エリア）を処理
+        const items = Array.from(itemWrap.querySelectorAll('.item'));
+        
+        return items.map(item => {
+          const areaName = item.querySelector('h3')?.textContent?.trim() || '';
+          const table = item.querySelector('table');
+          
+          if (!table) {
+            return { areaName, slots: [] };
+          }
+
+          // テーブルの各行（時間帯）を処理
+          const rows = Array.from(table.querySelectorAll('tbody tr'));
+          const slots = rows.slice(1).map(row => { // 最初の行はヘッダーなのでスキップ
+            const cells = Array.from(row.querySelectorAll('td'));
+            return {
+              timeRange: cells[0]?.textContent?.trim() || '',
+              user: cells[1]?.textContent?.trim() || '',
+              purpose: cells[2]?.textContent?.trim() || '',
+            };
+          });
+
+          return { areaName, slots };
+        });
+      }, facility.name);
+
+      if (!facilitySchedule) {
+        console.error(`施設「${facility.name}」の予定が見つかりませんでした`);
+        return [];
+      }
+
+      // 本日の日付のデータとして返す
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // facilityScheduleを AvailabilityData 形式に変換
+      const slots: TimeSlot[] = [];
+      
+      for (const area of facilitySchedule) {
+        for (const slot of area.slots) {
+          // 時間範囲をパース（例: "9:00～13:00"）
+          const timeMatch = slot.timeRange.match(/(\d+):(\d+)～(\d+):(\d+)/);
+          if (!timeMatch) continue;
+
+          const startHour = parseInt(timeMatch[1]);
+          const startMinute = parseInt(timeMatch[2]);
+          const endHour = parseInt(timeMatch[3]);
+          const endMinute = parseInt(timeMatch[4]);
+
+          const startTime = new Date(today);
+          startTime.setHours(startHour, startMinute, 0, 0);
+
+          const endTime = new Date(today);
+          endTime.setHours(endHour, endMinute, 0, 0);
+
+          // 利用者が「」または空の場合は空きとみなす
+          const isAvailable = !slot.user || slot.user === '';
+
+          slots.push({
+            startTime,
+            endTime,
+            isAvailable,
+            area: area.areaName,
+            user: slot.user || undefined,
+            purpose: slot.purpose || undefined,
+          });
+        }
+      }
+
+      // 時間範囲でフィルタリング
+      const filteredSlots = timeRange ? filterTimeSlots(slots, timeRange) : slots;
+
+      return [{
+        date: today,
+        slots: filteredSlots,
+      }];
+
     } catch (error) {
-      throw new Error(
-        `日付と施設の選択に失敗しました: facility=${facility.id}, date=${date}`
+      console.error(
+        `Failed to scrape availability for ${facility.name}:`,
+        error
       );
+      return [];
     }
   }
+
 }
