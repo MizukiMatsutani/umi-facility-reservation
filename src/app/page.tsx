@@ -18,6 +18,7 @@ export default function Home() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<{ type: ErrorType; message: string } | null>(null);
+  const [lastSearchParams, setLastSearchParams] = useState<SearchParams | null>(null);
 
   /**
    * 検索フォーム送信ハンドラ
@@ -29,6 +30,7 @@ export default function Home() {
   const handleSubmit = async (params: SearchParams) => {
     setIsLoading(true);
     setError(null);
+    setLastSearchParams(params); // 検索パラメータを保存
 
     try {
       // SearchParamsからScrapeRequestに変換（Date[] → string[]）
@@ -112,12 +114,17 @@ export default function Home() {
                 message={error.message}
                 onRetry={handleRetry}
               />
-              {/* エラー後も検索フォームを表示 */}
+              {/* エラー後も検索フォームを表示（入力状態を保持） */}
               <div className="border-t border-gray-200 pt-6">
                 <h2 className="mb-4 text-lg font-medium text-gray-900">
                   検索条件を変更して再度お試しください
                 </h2>
-                <SearchForm onSubmit={handleSubmit} isLoading={isLoading} />
+                <SearchForm
+                  onSubmit={handleSubmit}
+                  isLoading={isLoading}
+                  initialDates={lastSearchParams?.dates}
+                  initialTimeRange={lastSearchParams?.timeRange}
+                />
               </div>
             </div>
           ) : (

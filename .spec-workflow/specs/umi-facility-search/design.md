@@ -121,7 +121,9 @@ graph TD
 ```typescript
 interface SearchFormProps {
   onSubmit: (params: SearchParams) => void;
-  isLoading: boolean;
+  isLoading?: boolean;
+  initialDates?: Date[];      // NEW: エラー時の入力状態保持用
+  initialTimeRange?: TimeRange;  // NEW: エラー時の入力状態保持用
 }
 
 interface SearchParams {
@@ -135,21 +137,32 @@ interface TimeRange {
 }
 ```
 
+**State:**
+```typescript
+const [selectedDates, setSelectedDates] = useState<Date[]>(initialDates);
+const [timeRange, setTimeRange] = useState<TimeRange | undefined>(initialTimeRange);
+const [validationError, setValidationError] = useState<string>('');
+const [resetKey, setResetKey] = useState<number>(0); // NEW: リセット用のキー
+```
+
 **依存関係:**
 - `DatePicker` (UI component)
 - `TimePicker` (UI component)
+- `QuickDateSelect` (UI component)
 - `Button` (UI component)
-- `date-fns` (日付操作)
 
 **再利用するもの:**
 - TailwindCSSのモバイルファーストスタイル
-- Reactのフォーム管理（useState, useEffect）
+- Reactのフォーム管理（useState）
 
 **責任:**
 - 日付選択UIの表示
 - 「本日から1週間」クイックボタン
 - バリデーション（日付未選択エラー）
 - 検索パラメータの送信
+- **NEW: リセットボタンの表示とリセット機能**
+- **NEW: エラー時の入力状態保持（initialDates/initialTimeRange経由）**
+- **NEW: コンポーネント再マウントによる完全なリセット（resetKey使用）**
 
 ### 2. DatePicker コンポーネント
 
@@ -252,6 +265,10 @@ interface LoadingSpinnerProps {
 **Props:**
 ```typescript
 interface FacilityCardProps {
+  facilityAvailability: FacilityAvailability;  // 統合型を使用
+}
+
+interface FacilityAvailability {
   facility: Facility;
   availability: AvailabilityData[];
 }
@@ -259,6 +276,7 @@ interface FacilityCardProps {
 interface Facility {
   id: string;
   name: string;
+  type: 'basketball' | 'mini-basketball';
 }
 
 interface AvailabilityData {
@@ -267,19 +285,25 @@ interface AvailabilityData {
 }
 
 interface TimeSlot {
-  time: string;        // "8:30", "9:00", etc.
+  startTime: string;   // "08:30"
+  endTime: string;     // "09:00"
   available: boolean;  // true = 空き, false = 空いていない
 }
 ```
 
 **依存関係:**
 - `AvailabilityList` (子コンポーネント)
-- `date-fns` (日付フォーマット)
+- `formatDate` (日付フォーマット関数)
 
 **責任:**
 - 施設名の表示
+- スポーツ種目の表示（バスケットボール/ミニバスケットボール）
 - 日付ごとの空き状況表示
 - 展開/折りたたみ状態管理
+- **NEW: 空き状況データがない場合の外部リンク表示**
+  - 「空き状況データがありません」メッセージ
+  - 宇美町の公式サイトへのリンク（target="_blank"）
+  - 外部リンクアイコンの表示
 
 ### 7. AvailabilityList コンポーネント
 
@@ -444,30 +468,41 @@ interface ErrorResponse {
 
 ## スクレイピング設計
 
-### スクレイピングフロー
+### 実装状況
+
+**Phase 1 ✅ (実装完了)**
+- 初期ページへのアクセス
+- スポーツ種目の選択（バスケットボール/ミニバスケットボール）
+- 施設一覧の取得（10件程度）
+
+**Phase 2 ⏸️ (延期)**
+- 日付と施設の選択
+- 空き状況の詳細取得
+
+**現在の動作:**
+- 検索を実行すると、施設一覧（10件程度）が取得される
+- 各施設カードには「空き状況データがありません」と表示される
+- 宇美町の公式サイトへのリンクが提供され、ユーザーはそこで詳細を確認できる
+
+### スクレイピングフロー（Phase 1実装版）
 
 ```mermaid
 sequenceDiagram
     participant UI as フロントエンド
     participant API as /api/scrape
-    participant RL as RateLimiter
     participant SC as Scraper
     participant EXT as 宇美町システム
 
     UI->>API: POST /api/scrape
-    API->>RL: checkRateLimit()
-    alt レート制限OK
-        RL-->>API: OK
-        API->>SC: scrapeFacilities(params)
-        SC->>EXT: navigate to system
-        EXT-->>SC: HTML response
-        SC->>SC: parse HTML
-        SC-->>API: FacilityAvailability[]
-        API-->>UI: JSON response
-    else レート制限NG
-        RL-->>API: Error
-        API-->>UI: 429 Too Many Requests
-    end
+    API->>SC: scrapeFacilities()
+    SC->>EXT: navigate to system
+    EXT-->>SC: HTML response
+    SC->>SC: selectSports()
+    SC->>SC: searchFacilities()
+    SC->>SC: selectAllFacilities()
+    SC-->>API: Facility[] (空き状況なし)
+    API-->>UI: FacilityAvailability[] (availability: [])
+    UI->>UI: 外部リンク表示
 ```
 
 ### Scraper クラス
@@ -478,41 +513,43 @@ sequenceDiagram
 - Puppeteerブラウザの起動
 - ページナビゲーション
 - HTML解析
-- データ抽出
+- データ抽出（Phase 1: 施設一覧のみ）
 
-**主要メソッド:**
+**実装状況:**
+- ✅ `navigateToSearchPage()` - 初期ページへのアクセス
+- ✅ `selectSports()` - スポーツ種目の選択（AJAX対応、label要素クリック）
+- ✅ `searchFacilities()` - 検索実行（searchMokuteki()関数呼び出し）
+- ✅ `selectAllFacilities()` - 施設一覧取得
+- ⏸️ `selectDateAndFacility()` - Phase 2で実装予定
+- ⏸️ `scrapeAvailability()` - Phase 2で実装予定
+
+**主要メソッド（Phase 1実装版）:**
 
 ```typescript
 class FacilityScraper {
   private browser: Browser | null = null;
 
   /**
-   * スクレイピング実行
+   * スクレイピング実行（Phase 1版）
    */
-  async scrapeFacilities(
-    dates: Date[],
-    timeRange?: TimeRange
-  ): Promise<FacilityAvailability[]> {
+  async scrapeFacilities(): Promise<FacilityAvailability[]> {
     await this.initBrowser();
-    
+
     try {
       const page = await this.browser!.newPage();
+
+      // Phase 1: 施設一覧まで取得
       await this.navigateToSearchPage(page);
-      await this.selectSports(page, ['basketball', 'mini-basketball']);
+      await this.selectSports(page);
+      await this.searchFacilities(page);
       const facilities = await this.selectAllFacilities(page);
-      
-      const results: FacilityAvailability[] = [];
-      
-      for (const facility of facilities) {
-        const availability = await this.scrapeAvailability(
-          page,
-          facility,
-          dates,
-          timeRange
-        );
-        results.push({ facility, availability });
-      }
-      
+
+      // Phase 1では空き状況は空配列
+      const results: FacilityAvailability[] = facilities.map(facility => ({
+        facility,
+        availability: []  // Phase 2で実装予定
+      }));
+
       return results;
     } finally {
       await this.closeBrowser();
@@ -540,33 +577,112 @@ class FacilityScraper {
   }
 
   /**
-   * スポーツ種目選択
+   * スポーツ種目選択（Phase 1実装完了）
+   *
+   * 重要な実装ポイント:
+   * 1. AJAX読み込み待機: radioMokutekiSubmit()がAJAXでスポーツ種目を読み込む
+   * 2. label要素クリック: カスタムUIのため、input要素ではなくlabel要素をクリック
    */
-  private async selectSports(
-    page: Page,
-    sports: string[]
-  ): Promise<void> {
-    // スポーツ選択ロジック
+  private async selectSports(page: Page): Promise<void> {
+    // 1. 屋内スポーツラジオボタンをクリック
+    await page.evaluate(() => {
+      const radio = document.querySelector('#radioPurposeLarge02') as HTMLInputElement;
+      radio.checked = true;
+      radio.click();
+    });
+
+    // 2. AJAX完了まで待機
+    await page.waitForSelector('#checkPurposeMiddle505', { timeout: 15000 });
+    await page.waitForFunction(() => {
+      const checkbox = document.querySelector('#checkPurposeMiddle505');
+      const parent = checkbox?.parentElement;
+      return parent && window.getComputedStyle(parent).display !== 'none';
+    }, { timeout: 15000 });
+
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // 3. label要素をクリック（input要素の直接クリックは不可）
+    await page.evaluate(() => {
+      const label505 = document.querySelector('label[for="checkPurposeMiddle505"]') as HTMLElement;
+      const label510 = document.querySelector('label[for="checkPurposeMiddle510"]') as HTMLElement;
+      label505.click();
+      label510.click();
+    });
+
+    // 4. 選択確認
+    const isSelected = await page.evaluate(() => {
+      const checkbox505 = document.querySelector('#checkPurposeMiddle505') as HTMLInputElement;
+      const checkbox510 = document.querySelector('#checkPurposeMiddle510') as HTMLInputElement;
+      return checkbox505?.checked && checkbox510?.checked;
+    });
+
+    if (!isSelected) {
+      throw new Error('チェックボックスの選択に失敗しました');
+    }
   }
 
   /**
-   * 施設一覧取得
+   * 検索実行（Phase 1実装完了）
+   *
+   * 重要な実装ポイント:
+   * ボタンクリックではなく、searchMokuteki()関数を直接呼び出す
+   */
+  private async searchFacilities(page: Page): Promise<void> {
+    const navigationPromise = page.waitForNavigation({
+      waitUntil: 'networkidle0',
+      timeout: 30000,
+    });
+
+    // searchMokuteki()関数を直接呼び出す
+    await page.evaluate(() => {
+      if (typeof (window as any).searchMokuteki === 'function') {
+        (window as any).searchMokuteki();
+      } else {
+        throw new Error('searchMokuteki関数が見つかりません');
+      }
+    });
+
+    await navigationPromise;
+
+    // エラーチェック
+    const errorMessage = await page.evaluate(() => {
+      const dlg = document.querySelector('#messageDlg');
+      if (dlg && window.getComputedStyle(dlg).display !== 'none') {
+        const messageEl = dlg.querySelector('div p');
+        return messageEl?.textContent || '';
+      }
+      return null;
+    });
+
+    if (errorMessage) {
+      throw new Error(`検索に失敗しました: ${errorMessage}`);
+    }
+  }
+
+  /**
+   * 施設一覧取得（Phase 1実装完了）
    */
   private async selectAllFacilities(page: Page): Promise<Facility[]> {
-    // 施設一覧取得ロジック
-  }
+    await page.waitForSelector('table#shisetsu', { timeout: 10000 });
 
-  /**
-   * 空き状況スクレイピング
-   */
-  private async scrapeAvailability(
-    page: Page,
-    facility: Facility,
-    dates: Date[],
-    timeRange?: TimeRange
-  ): Promise<AvailabilityData[]> {
-    // 空き状況スクレイピングロジック
-    // timeRangeが指定されている場合は、from-toの範囲のみフィルタリング
+    const facilities = await page.evaluate(() => {
+      const checkboxes = Array.from(
+        document.querySelectorAll('input[name="checkShisetsu"]')
+      ) as HTMLInputElement[];
+
+      return checkboxes.map((checkbox) => ({
+        id: checkbox.value,
+        name: checkbox.parentElement?.textContent?.trim() || '',
+        type: 'basketball' as const  // バスケットボール固定
+      }));
+    });
+
+    if (facilities.length === 0) {
+      throw new Error('施設が見つかりませんでした');
+    }
+
+    console.log(`✅ ${facilities.length}件の施設を取得しました`);
+    return facilities;
   }
 
   /**
@@ -578,6 +694,37 @@ class FacilityScraper {
       this.browser = null;
     }
   }
+}
+```
+
+**Phase 2で実装予定のメソッド:**
+
+```typescript
+/**
+ * 日付と施設の選択（Phase 2）
+ */
+private async selectDateAndFacility(
+  page: Page,
+  facility: Facility,
+  dates: Date[]
+): Promise<void> {
+  // 施設選択
+  // 日付選択ページへ遷移
+  // 指定日付を選択
+  // 次へ進むボタンをクリック
+}
+
+/**
+ * 空き状況スクレイピング（Phase 2）
+ */
+private async scrapeAvailability(
+  page: Page,
+  dates: Date[],
+  timeRange?: TimeRange
+): Promise<AvailabilityData[]> {
+  // 時間帯テーブルから空き状況を抽出
+  // ◯（空き）、△（やや空き）、✕（空いていない）を判定
+  // timeRangeが指定されている場合は、from-toの範囲のみフィルタリング
 }
 ```
 

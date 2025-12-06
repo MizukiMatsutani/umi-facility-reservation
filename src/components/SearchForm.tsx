@@ -10,16 +10,24 @@ import { validateSearchParams, validateTimeRange } from '@/lib/utils/validation'
 interface SearchFormProps {
   onSubmit: (params: SearchParams) => void;
   isLoading?: boolean;
+  initialDates?: Date[];
+  initialTimeRange?: TimeRange;
 }
 
 /**
  * 検索フォームコンポーネント
  * DatePicker、TimePicker、QuickDateSelectを統合し、検索パラメータのバリデーションと送信を行います
  */
-export default function SearchForm({ onSubmit, isLoading = false }: SearchFormProps) {
-  const [selectedDates, setSelectedDates] = useState<Date[]>([]);
-  const [timeRange, setTimeRange] = useState<TimeRange | undefined>(undefined);
+export default function SearchForm({
+  onSubmit,
+  isLoading = false,
+  initialDates = [],
+  initialTimeRange = undefined,
+}: SearchFormProps) {
+  const [selectedDates, setSelectedDates] = useState<Date[]>(initialDates);
+  const [timeRange, setTimeRange] = useState<TimeRange | undefined>(initialTimeRange);
   const [validationError, setValidationError] = useState<string>('');
+  const [resetKey, setResetKey] = useState<number>(0); // リセット用のキー
 
   // クイック選択ハンドラ
   const handleQuickSelect = (dates: Date[]) => {
@@ -37,6 +45,14 @@ export default function SearchForm({ onSubmit, isLoading = false }: SearchFormPr
   const handleTimeRangeChange = (range: TimeRange | undefined) => {
     setTimeRange(range);
     setValidationError('');
+  };
+
+  // リセットハンドラ
+  const handleReset = () => {
+    setSelectedDates([]);
+    setTimeRange(undefined);
+    setValidationError('');
+    setResetKey(prev => prev + 1); // キーを変更してコンポーネントを再マウント
   };
 
   // フォーム送信ハンドラ
@@ -78,6 +94,7 @@ export default function SearchForm({ onSubmit, isLoading = false }: SearchFormPr
           検索する日付を選択
         </label>
         <DatePicker
+          key={`date-picker-${resetKey}`}
           selectedDates={selectedDates}
           onDateSelect={handleDateSelect}
           minDate={new Date()}
@@ -85,7 +102,11 @@ export default function SearchForm({ onSubmit, isLoading = false }: SearchFormPr
       </div>
 
       {/* 時間範囲選択 */}
-      <TimePicker value={timeRange} onChange={handleTimeRangeChange} />
+      <TimePicker
+        key={`time-picker-${resetKey}`}
+        value={timeRange}
+        onChange={handleTimeRangeChange}
+      />
 
       {/* バリデーションエラー表示 */}
       {validationError && (
@@ -97,15 +118,26 @@ export default function SearchForm({ onSubmit, isLoading = false }: SearchFormPr
         </div>
       )}
 
-      {/* 検索ボタン */}
-      <button
-        type="submit"
-        disabled={isLoading}
-        className="min-h-[44px] rounded-md bg-blue-600 px-6 py-3 text-base font-medium text-white hover:bg-blue-700 active:bg-blue-800 disabled:cursor-not-allowed disabled:bg-gray-400"
-        aria-label="施設を検索"
-      >
-        {isLoading ? '検索中...' : '検索'}
-      </button>
+      {/* 検索ボタンとリセットボタン */}
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="flex-1 min-h-[44px] rounded-md bg-blue-600 px-6 py-3 text-base font-medium text-white hover:bg-blue-700 active:bg-blue-800 disabled:cursor-not-allowed disabled:bg-gray-400"
+          aria-label="施設を検索"
+        >
+          {isLoading ? '検索中...' : '検索'}
+        </button>
+        <button
+          type="button"
+          onClick={handleReset}
+          disabled={isLoading}
+          className="flex-1 min-h-[44px] rounded-md bg-gray-200 px-6 py-3 text-base font-medium text-gray-700 hover:bg-gray-300 active:bg-gray-400 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 sm:flex-initial sm:px-8"
+          aria-label="選択をリセット"
+        >
+          リセット
+        </button>
+      </div>
 
       {/* 選択状態の表示 */}
       {selectedDates.length > 0 && (

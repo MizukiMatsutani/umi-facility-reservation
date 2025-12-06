@@ -45,6 +45,9 @@ export class FacilityScraper {
       // スポーツ種目選択（バスケットボール、ミニバスケットボール）
       await this.selectSports(page);
 
+      // 検索ボタンをクリックして施設一覧ページへ遷移
+      await this.searchFacilities(page);
+
       // 施設一覧取得
       const facilities = await this.selectAllFacilities(page);
 
@@ -121,14 +124,124 @@ export class FacilityScraper {
    * @param page - Puppeteerページインスタンス
    */
   async selectSports(page: Page): Promise<void> {
-    // TODO: 実際のHTML構造に合わせてセレクタを調整
-    // バスケットボールとミニバスケットボールのチェックボックスを選択
     try {
-      await page.waitForSelector('.sport-selection', { timeout: 10000 });
-      await page.click('input[value="basketball"]');
-      await page.click('input[value="mini-basketball"]');
+      // 屋内スポーツのラジオボタンを選択（JavaScriptで操作）
+      await page.evaluate(() => {
+        const radio = document.querySelector('#radioPurposeLarge02') as HTMLInputElement;
+        if (radio) {
+          radio.checked = true;
+          // onclickイベントを発火させる（radioMokutekiSubmit関数が呼ばれる）
+          radio.click();
+        } else {
+          throw new Error('屋内スポーツのラジオボタンが見つかりません');
+        }
+      });
+
+      // AJAXでスポーツ種目が読み込まれるまで待機
+      await page.waitForSelector('#checkPurposeMiddle505', {
+        timeout: 15000,
+      });
+
+      // さらに、要素が実際に表示されるまで待機
+      await page.waitForFunction(
+        () => {
+          const checkbox = document.querySelector('#checkPurposeMiddle505');
+          if (!checkbox) return false;
+          const parent = checkbox.parentElement;
+          if (!parent) return false;
+          const display = window.getComputedStyle(parent).display;
+          return display !== 'none';
+        },
+        { timeout: 15000 }
+      );
+
+      // DOMが完全に更新されるまで追加で待機
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // バスケットボールとミニバスケットボールを選択
+      // 重要: input要素ではなくlabel要素をクリックする必要がある
+      await page.evaluate(() => {
+        const label505 = document.querySelector('label[for="checkPurposeMiddle505"]') as HTMLElement;
+        const label510 = document.querySelector('label[for="checkPurposeMiddle510"]') as HTMLElement;
+
+        if (!label505 || !label510) {
+          throw new Error('バスケットボールのラベルが見つかりません');
+        }
+
+        // labelをクリックすることでチェックボックスが選択される
+        label505.click();
+        label510.click();
+      });
+
+      // 選択が反映されるまで少し待機
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // 選択されたことを確認
+      const isSelected = await page.evaluate(() => {
+        const checkbox505 = document.querySelector('#checkPurposeMiddle505') as HTMLInputElement;
+        const checkbox510 = document.querySelector('#checkPurposeMiddle510') as HTMLInputElement;
+        return checkbox505?.checked && checkbox510?.checked;
+      });
+
+      if (!isSelected) {
+        throw new Error('チェックボックスの選択に失敗しました');
+      }
+
     } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`スポーツ種目の選択に失敗しました: ${error.message}`);
+      }
       throw new Error('スポーツ種目の選択に失敗しました');
+    }
+  }
+
+  /**
+   * 検索ボタンをクリックして施設一覧ページへ遷移
+   *
+   * @param page - Puppeteerページインスタンス
+   */
+  async searchFacilities(page: Page): Promise<void> {
+    try {
+      // ページ遷移の待機をセットアップ（クリック前に設定）
+      const navigationPromise = page.waitForNavigation({
+        waitUntil: 'networkidle0',
+        timeout: 30000,
+      });
+
+      // searchMokuteki()関数を直接呼び出す
+      // この関数はAJAXでバリデーションを行い、成功すれば__doPostBackでフォーム送信する
+      await page.evaluate(() => {
+        // searchMokuteki関数が存在するか確認
+        if (typeof (window as any).searchMokuteki === 'function') {
+          (window as any).searchMokuteki();
+        } else {
+          throw new Error('searchMokuteki関数が見つかりません');
+        }
+      });
+
+      // ページ遷移を待つ
+      await navigationPromise;
+
+      // エラーダイアログが表示されていないか確認
+      // （検索成功の場合はページ遷移するのでこのコードは実行されない）
+      const errorMessage = await page.evaluate(() => {
+        const dlg = document.querySelector('#messageDlg');
+        if (dlg && window.getComputedStyle(dlg).display !== 'none') {
+          const messageEl = dlg.querySelector('div p');
+          return messageEl?.textContent || '';
+        }
+        return null;
+      });
+
+      if (errorMessage) {
+        throw new Error(`検索に失敗しました: ${errorMessage}`);
+      }
+
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`施設検索に失敗しました: ${error.message}`);
+      }
+      throw new Error('施設検索に失敗しました');
     }
   }
 
@@ -140,16 +253,31 @@ export class FacilityScraper {
    */
   async selectAllFacilities(page: Page): Promise<Facility[]> {
     try {
-      // 施設一覧が表示されるまで待機
-      await page.waitForSelector('.facilities-table', { timeout: 10000 });
+      // 施設一覧テーブルが表示されるまで待機
+      await page.waitForSelector('table#shisetsu', { timeout: 10000 });
 
-      // ページのHTMLを取得
-      const html = await page.content();
+      // 施設のチェックボックスから施設情報を取得
+      const facilities = await page.evaluate(() => {
+        const checkboxes = Array.from(
+          document.querySelectorAll('input[name="checkShisetsu"]')
+        ) as HTMLInputElement[];
 
-      // HTMLパーサーを使用して施設一覧を抽出
-      // バスケットボールとミニバスケットボールの両方を含むため、
-      // ここでは仮に 'basketball' として扱う（実際のHTML構造による）
-      const facilities = parseFacilities(html, 'basketball');
+        return checkboxes.map((checkbox) => {
+          // チェックボックスのラベルから施設名を取得
+          const label = checkbox.parentElement?.textContent?.trim() || '';
+
+          return {
+            id: checkbox.value, // 施設ID（例: "341007"）
+            name: label,        // 施設名（例: "宇美勤労者体育センター"）
+          };
+        });
+      });
+
+      if (facilities.length === 0) {
+        throw new Error('施設が見つかりませんでした');
+      }
+
+      console.log(`✅ ${facilities.length}件の施設を取得しました`);
 
       return facilities;
     } catch (error) {
