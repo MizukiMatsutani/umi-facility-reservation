@@ -479,7 +479,7 @@
 
 ### 8.3 ドキュメントの作成
 
-- [ ] 8.3.1 README.mdの作成
+- [x] 8.3.1 README.mdの作成
   - ファイル: README.md
   - プロジェクト概要
   - セットアップ手順
@@ -488,7 +488,7 @@
   - _要件: 非機能要件（メンテナンス性）_
   - _プロンプト: Role: Technical Writer with expertise in developer documentation | Task: Create comprehensive README.md covering project overview (purpose, tech stack), setup instructions (pnpm install, environment variables), development commands (dev, build, test, lint), deployment instructions (Vercel), and project structure overview | Restrictions: Must write in Japanese, provide clear step-by-step setup, document all pnpm scripts, include troubleshooting section, keep concise but comprehensive, use markdown formatting | Success: README is comprehensive and clear, setup instructions work for new developers, all commands documented, written in Japanese, well-formatted_
 
-- [ ] 8.3.2 API仕様書の作成
+- [x] 8.3.2 API仕様書の作成
   - ファイル: docs/api/scrape-endpoint.md
   - /api/scrape の詳細仕様
   - リクエスト/レスポンス例
@@ -497,7 +497,7 @@
   - _要件: 要件3（スクレイピング）, 要件5（エラー表示）_
   - _プロンプト: Role: API Documentation Specialist with expertise in REST API documentation | Task: Create detailed API specification document for /api/scrape endpoint including endpoint URL, HTTP method, request body schema (ScrapeRequest), response schema (ScrapeResponse), error responses (ErrorResponse with all error types), example requests/responses in JSON, rate limiting details | Restrictions: Must write in Japanese, provide complete JSON examples, document all error codes (400, 429, 500) with scenarios, specify rate limiting (5 seconds, single concurrent request), use clear formatting | Success: API spec is complete and clear, all schemas documented, examples are accurate, error scenarios covered, rate limiting explained, well-formatted_
 
-- [ ] 8.3.3 ユーザーマニュアルの作成
+- [x] 8.3.3 ユーザーマニュアルの作成
   - ファイル: docs/user-guide.md
   - 使い方の説明
   - スクリーンショット（将来追加）
