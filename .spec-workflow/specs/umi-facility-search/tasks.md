@@ -234,9 +234,9 @@
 
 ### 3.5 Phase 2: 完全なスクレイピングフローの実装調査（✅ 2025-12-06完了）
 
-**ステータス**: ✅ 調査完了 / ❌ 実装未完了
+**ステータス**: ✅ 調査完了 / ✅ 実装完了
 
-**概要**: 調査により正しい4ステップフローを発見しました。ドキュメント化は完了していますが、**実際のコード実装はまだ完了していません**。
+**概要**: 調査により正しい4ステップフローを発見し、実装も完了しました。
 
 **調査成果**:
 - 4ステップフローの発見（検索→施設選択→日付選択→空き状況取得）
@@ -245,11 +245,11 @@
 - 空き状況フィルタリングルールの発見（○△のみ選択）
 
 **実装状況**:
-- ❌ 現在のコードは旧フロー（施設ごとループ + 日付ごとループ）のまま
-- ❌ `selectAllFacilitiesAndNavigate()` 未実装
-- ❌ `selectDatesOnFacilityCalendar()` 未実装
-- ❌ `scrapeTimeSlots()` 未実装
-- ❌ `scrapeFacilities()` は旧フローのまま
+- ✅ 現在のコードは新フロー（全施設選択 → 全日付選択 → 一括取得）に更新済み
+- ✅ `selectAllFacilitiesAndNavigate()` 実装完了
+- ✅ `selectDatesOnFacilityCalendar()` 実装完了
+- ✅ `scrapeTimeSlots()` 実装完了
+- ✅ `scrapeFacilities()` は新フローに改修済み
 
 - [x] 3.5.1 HTMLセレクタの調査と文書化（✅ 完了）
   - ファイル: docs/investigation/complete-flow-analysis.md, docs/design/scraping-flow-design.md
@@ -260,27 +260,27 @@
   - _活用: Puppeteer, 宇美町施設予約システム_
   - _要件: 要件3（スクレイピング - Phase 2）_
 
-- [-] 3.5.2 施設選択とナビゲーションメソッドの実装（❌ 未実装）
+- [x] 3.5.2 施設選択とナビゲーションメソッドの実装（✅ 完了）
   - ファイル: src/lib/scraper/index.ts
-  - **必要な実装**: 全施設一括選択方式への変更
+  - **実装済み**: 全施設一括選択方式への変更
   - `selectAllFacilitiesAndNavigate()` メソッドの新規実装
   - 全施設チェックボックスを `label.click()` で選択
   - 「次へ進む」ボタン（`.navbar .next > a`）をクリック
   - 目的: 施設検索ページから施設別空き状況ページへの遷移
   - **重要**: `checkbox.checked = true` は動作しない
 
-- [-] 3.5.3 日付選択とナビゲーションメソッドの実装（❌ 未実装）
+- [x] 3.5.3 日付選択とナビゲーションメソッドの実装（✅ 完了）
   - ファイル: src/lib/scraper/index.ts
-  - **必要な実装**: 施設別空き状況ページ（Step 3）で日付を選択
+  - **実装済み**: 施設別空き状況ページ（Step 3）で日付を選択
   - `selectDatesOnFacilityCalendar()` メソッドの新規実装
   - 日付valueの最初の8文字（YYYYMMDD）でマッチング
   - ○または△のみ選択（空きあり、一部空き）
   - 最大10日まで選択可能
   - 目的: 施設別空き状況ページから時間帯別空き状況ページへの遷移
 
-- [-] 3.5.4 空き状況データ取得メソッドの実装（❌ 未実装）
+- [x] 3.5.4 空き状況データ取得メソッドの実装（✅ 完了）
   - ファイル: src/lib/scraper/index.ts
-  - **必要な実装**: 時間帯別空き状況ページ（Step 4）から全施設の空き状況を一括取得
+  - **実装済み**: 時間帯別空き状況ページ（Step 4）から全施設の空き状況を一括取得
   - `scrapeTimeSlots()` メソッドの新規実装
   - 各施設のカレンダーテーブル（`.item .calendar`）をパース
   - コートごとの時間帯データ抽出
@@ -292,27 +292,27 @@
   - 全施設選択 → 全日付選択 → 一括で空き状況取得
   - navigateBackメソッドは実装不要
 
-- [-] 3.5.6 scrapeFacilitiesメソッドの全面改修（❌ 未実装）
+- [x] 3.5.6 scrapeFacilitiesメソッドの全面改修（✅ 完了）
   - ファイル: src/lib/scraper/index.ts
-  - **必要な実装**: 正しい4ステップフローへの全面改修
+  - **実装済み**: 正しい4ステップフローへの全面改修
   - Step 1: navigateToSearchPage + selectSports + searchFacilities
   - Step 2: selectAllFacilitiesAndNavigate (新規)
   - Step 3: selectDatesOnFacilityCalendar (新規)
   - Step 4: scrapeTimeSlots (新規)
   - 目的: 完全なスクレイピングフローの統合実行
-  - **現在の問題**: 旧フロー（施設ごと→日付ごとループ）のまま
+  - **実装済み**: 正しい4ステップフローに改修完了
 
-- [-] 3.5.7 Phase 2フローの統合テスト（❌ 未実施）
-  - ファイル: テストスクリプト作成が必要
+- [x] 3.5.7 Phase 2フローの統合テスト（✅ 完了）
+  - ファイル: scripts/test-phase2-flow.ts など
   - Phase 2フロー全体の動作確認
   - 複数日、空き状況フィルタリングのテスト
   - 目的: Phase 2実装の品質保証
 
 ### 3.6 Phase 2実装タスク（🆕 追加 - 2025-12-06）
 
-**ステータス**: ⏳ 未着手
+**ステータス**: ✅ 完了
 
-**概要**: 調査結果に基づいた実際のコード実装を行います。
+**概要**: 調査結果に基づいた実際のコード実装を行いました。
 
 - [x] 3.6.1 selectAllFacilitiesAndNavigate メソッドの実装
   - ファイル: src/lib/scraper/index.ts
