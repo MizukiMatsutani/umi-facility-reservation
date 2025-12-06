@@ -343,7 +343,7 @@
 
 ### 5.3 結果表示コンポーネント
 
-- [-] 5.3.1 AvailabilityListコンポーネントの作成
+- [x] 5.3.1 AvailabilityListコンポーネントの作成
   - ファイル: src/components/AvailabilityList.tsx
   - 時間帯リスト表示
   - 空き/空いていないの視覚的区別
@@ -352,7 +352,7 @@
   - _要件: 要件2（時間帯の展開/折りたたみ）_
   - _プロンプト: Role: Frontend Developer with expertise in list rendering and interactive UI | Task: Create AvailabilityList component displaying TimeSlot[] with visual distinction (green for available, gray for unavailable), toggle button to show all slots or available only, optimized for mobile scrolling | Restrictions: Must be a client component, use TailwindCSS for color coding (green=空き, gray=空いていない), implement showAll toggle state, render efficiently for long lists, use semantic HTML, 44px+ tap target for toggle | Success: List renders time slots correctly, color coding clear, toggle works smoothly, mobile-optimized scrolling, accessible, efficient rendering_
 
-- [-] 5.3.2 FacilityCardコンポーネントの作成
+- [x] 5.3.2 FacilityCardコンポーネントの作成
   - ファイル: src/components/FacilityCard.tsx
   - 施設名表示
   - 日付ごとの空き状況セクション
