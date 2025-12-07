@@ -132,8 +132,10 @@ export class FacilityScraper {
    * --no-sandbox と --disable-setuid-sandbox はVercelで必要な設定です。
    */
   async initBrowser(): Promise<void> {
-    // Vercel環境では@sparticuz/chromiumを使用
-    if (process.env.VERCEL === '1') {
+    // 本番環境（Vercel, Render.com等）では@sparticuz/chromiumを使用
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1' || process.env.RENDER === 'true';
+
+    if (isProduction) {
       const chromium = await import('@sparticuz/chromium');
       const puppeteer = await import('puppeteer-core');
 
