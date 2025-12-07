@@ -576,8 +576,8 @@ export class FacilityScraper {
       // 表示ボタンをクリック
       await page.click('#btnHyoji');
 
-      // ページが更新されるまで待機
-      await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 30000 });
+      // ページが更新されるまで待機（本番環境では60秒に延長）
+      await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 60000 });
 
       console.log('✅ 表示期間を1ヶ月に設定完了');
 
@@ -700,7 +700,7 @@ export class FacilityScraper {
       console.log('📍 時間帯別空き状況ページへ遷移中...');
 
       await Promise.all([
-        page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 30000 }),
+        page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 60000 }),
         page.click('.navbar .next > a'),
       ]);
 
@@ -742,7 +742,7 @@ export class FacilityScraper {
 
       // 「前に戻る」ボタンをクリック
       await Promise.all([
-        page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 30000 }),
+        page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 60000 }),
         page.click('.navbar .prev > a'),
       ]);
 
