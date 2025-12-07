@@ -717,13 +717,15 @@
 
 ### 10.1 本番デプロイメント
 
-- [-] 10.1.1 本番環境へのデプロイ
+- [x] 10.1.1 本番環境へのデプロイ
   - ファイル: N/A（Vercelデプロイ）
   - Vercel本番デプロイの実行
   - カスタムドメインの設定（オプション）
   - 目的: アプリケーションの公開
   - _要件: tech.md（デプロイメント）_
   - _プロンプト: Role: DevOps Engineer with expertise in Vercel production deployments | Task: Deploy application to Vercel production environment, verify deployment succeeds, configure custom domain if provided (or use Vercel default .vercel.app), verify HTTPS works, test production URL with all features, create deployment checklist | Restrictions: Must deploy to production (not preview), verify all environment variables set (if any), test full user journey on production URL, ensure HTTPS certificate works, document production URL | Success: Deployment to production succeeds, HTTPS works correctly, all features functional on production, custom domain configured (if applicable), production URL documented_
+  - **完了日**: 2025年12月7日
+  - **本番URL**: https://umi-facility-reservation.vercel.app
 
 ### 10.2 ポストデプロイ検証
 
