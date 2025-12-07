@@ -4,9 +4,15 @@
 
 このドキュメントは、宇美町施設予約検索システムをRender.comにデプロイする手順を説明します。
 
+**✅ デプロイ状況**: 本番環境稼働中（2025年12月7日デプロイ完了）
+- **本番URL**: https://umi-facility-reservation.onrender.com
+- **動作確認**: 7日分の施設検索が正常に動作
+
 ### Render.comを選択した理由
 
 VercelでのデプロイではIPブロッキングの問題が発生し、宇美町システムへのアクセスが`net::ERR_CONNECTION_TIMED_OUT`エラーで失敗しました。Render.comでは異なるIPアドレス範囲を使用するため、この問題の解決が期待されます。
+
+**結果**: ✅ **IPブロック問題は解決** - Render.comから宇美町システムへのアクセスが正常に動作することを確認しました。
 
 ## 前提条件
 
@@ -235,3 +241,71 @@ render logs -s umi-facility-reservation
 2. Render.comのログを確認
 3. GitHubのIssuesで報告
 4. Render.comのサポートに問い合わせ（有料プランのみ）
+
+## 本番デプロイで解決した問題（2025年12月7日）
+
+### 問題1: ヘルスチェックエンドポイントがない
+
+**症状**: "No open ports detected"エラーでデプロイ失敗
+
+**原因**: `/api/health`エンドポイントが存在しなかった
+
+**解決策**:
+```typescript
+// src/app/api/health/route.ts を作成
+export async function GET() {
+  return NextResponse.json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    service: "umi-facility-reservation",
+  });
+}
+```
+
+### 問題2: Chromiumが見つからない
+
+**症状**: "Tried to find the browser at the configured path (/usr/bin/chromium-browser), but no executable was found."
+
+**原因**: Render.com環境を検出できず、`@sparticuz/chromium`を使用していなかった
+
+**解決策**:
+```typescript
+// src/lib/scraper/index.ts
+const isProduction =
+  process.env.NODE_ENV === 'production' ||
+  process.env.VERCEL === '1' ||
+  process.env.RENDER === 'true';
+
+if (isProduction) {
+  const chromium = await import('@sparticuz/chromium');
+  // ... Chromiumを使用
+}
+```
+
+### 問題3: AJAX更新でタイムアウト
+
+**症状**: "Navigation timeout of 60000 ms exceeded"
+
+**原因**: 表示期間設定ボタン（`#btnHyoji`）はページ全体の遷移ではなくAJAX更新を行うが、`waitForNavigation`を使用していた
+
+**解決策**:
+```typescript
+// Before（誤り）
+await page.click('#btnHyoji');
+await page.waitForNavigation({ ... }); // ← 永遠に待ち続ける
+
+// After（正しい）
+await page.click('#btnHyoji');
+await page.waitForFunction(
+  () => document.querySelectorAll('input[type="checkbox"][name="checkdate"]').length > 0,
+  { timeout: 60000 }
+);
+await new Promise(resolve => setTimeout(resolve, 2000));
+```
+
+### 検証結果
+
+✅ **すべての問題を解決し、本番環境で正常稼働中**
+- IPブロック問題: Render.comから宇美町システムへのアクセス成功
+- スクレイピング: 7日分の検索が正常に完了
+- レスポンス時間: コールドスタート30-60秒、稼働中は20-30秒
