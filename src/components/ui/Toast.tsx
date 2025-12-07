@@ -125,24 +125,14 @@ export function Toast({ id, type, message, duration = 5000, onClose }: ToastProp
       {duration > 0 && (
         <div className="h-1 w-full bg-gray-200">
           <div
-            className={`h-full ${style.progressBar} transition-all ease-linear`}
+            className={`h-full ${style.progressBar}`}
             style={{
-              animation: `shrink ${duration}ms linear`,
+              width: '100%',
+              animation: `toast-shrink ${duration}ms linear forwards`,
             }}
           />
         </div>
       )}
-
-      <style jsx>{`
-        @keyframes shrink {
-          from {
-            width: 100%;
-          }
-          to {
-            width: 0%;
-          }
-        }
-      `}</style>
     </div>
   );
 }
