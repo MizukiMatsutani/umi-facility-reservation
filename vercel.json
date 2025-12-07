@@ -4,5 +4,11 @@
   "installCommand": "pnpm install",
   "devCommand": "pnpm dev",
   "framework": "nextjs",
-  "regions": ["hnd1"]
+  "regions": ["hnd1"],
+  "functions": {
+    "app/api/**/*.ts": {
+      "memory": 1024,
+      "maxDuration": 90
+    }
+  }
 }

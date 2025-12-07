@@ -6,7 +6,6 @@
  */
 
 import { format } from 'date-fns';
-import type { Browser, Page } from 'puppeteer-core';
 import type {
   Facility,
   AvailabilityData,
@@ -23,7 +22,7 @@ import { parseFacilities, parseAvailability } from './parser';
  * Vercelのサーバーレス環境に対応した設定でブラウザを起動します。
  */
 export class FacilityScraper {
-  private browser: Browser | null = null;
+  private browser: any | null = null;
 
   /**
    * スクレイピング実行（メインオーケストレーションメソッド）
@@ -47,7 +46,7 @@ export class FacilityScraper {
       const page = await this.browser!.newPage();
 
       // ダイアログを自動的に受け入れる
-      page.on('dialog', async (dialog) => {
+      page.on('dialog', async (dialog: any) => {
         console.log('ダイアログ検出:', dialog.message());
         await dialog.accept();
       });
@@ -133,25 +132,29 @@ export class FacilityScraper {
    * --no-sandbox と --disable-setuid-sandbox はVercelで必要な設定です。
    */
   async initBrowser(): Promise<void> {
-    // Vercel環境かどうかを判定
-    const isVercel = process.env.VERCEL === '1';
-
-    if (isVercel) {
-      // Vercel環境：puppeteer-coreと@sparticuz/chromiumを使用
+    // Vercel環境では@sparticuz/chromiumを使用
+    if (process.env.VERCEL === '1') {
       const chromium = await import('@sparticuz/chromium');
-      const puppeteerCore = await import('puppeteer-core');
+      const puppeteer = await import('puppeteer-core');
 
-      // Vercel環境では日本語フォントを除外してバイナリサイズを削減
-      chromium.default.setGraphicsMode = false;
+      // Brotli圧縮ファイルの問題を回避するため、リモートからChromiumをダウンロード
+      const executablePath = await chromium.default.executablePath();
 
-      this.browser = await puppeteerCore.default.launch({
-        args: [...chromium.default.args, '--no-sandbox', '--disable-setuid-sandbox'],
-        defaultViewport: { width: 1280, height: 720 },
-        executablePath: await chromium.default.executablePath(),
-        headless: true,
+      this.browser = await puppeteer.default.launch({
+        args: [
+          ...chromium.default.args,
+          '--disable-gpu',
+          '--disable-dev-shm-usage',
+          '--disable-setuid-sandbox',
+          '--no-sandbox',
+          '--single-process',
+        ],
+        defaultViewport: chromium.default.defaultViewport,
+        executablePath,
+        headless: chromium.default.headless,
       });
     } else {
-      // ローカル環境：通常のpuppeteerを使用
+      // ローカル環境では通常のpuppeteerを使用
       const puppeteer = await import('puppeteer');
 
       this.browser = await puppeteer.default.launch({
@@ -160,6 +163,7 @@ export class FacilityScraper {
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
+          '--disable-gpu',
         ],
       });
     }
@@ -182,17 +186,41 @@ export class FacilityScraper {
    *
    * @param page - Puppeteerページインスタンス
    */
-  async navigateToSearchPage(page: Page): Promise<void> {
-    // User-Agent設定（スクレイピングであることを明示）
+  async navigateToSearchPage(page: any): Promise<void> {
+    // User-Agent設定（一般的なブラウザとして認識させる）
     await page.setUserAgent(
-      'Mozilla/5.0 (compatible; UmiFacilitySearch/1.0)'
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     );
 
-    // 検索ページへ移動
-    await page.goto('https://www.11489.jp/Umi/web/Home/WgR_ModeSelect', {
-      waitUntil: 'networkidle0',
-      timeout: 10000,
-    });
+    // 検索ページへ移動（リトライ機能付き）
+    const maxRetries = 3;
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`📍 検索ページへアクセス中... (試行 ${attempt}/${maxRetries})`);
+
+        await page.goto('https://www.11489.jp/Umi/web/Home/WgR_ModeSelect', {
+          waitUntil: 'domcontentloaded',
+          timeout: 30000,
+        });
+
+        console.log('✅ 検索ページへのアクセス成功');
+        return; // 成功したら終了
+      } catch (error) {
+        lastError = error as Error;
+        console.log(`⚠️ 試行 ${attempt} 失敗: ${lastError.message}`);
+
+        if (attempt < maxRetries) {
+          // リトライ前に2秒待機
+          console.log('⏳ 2秒後にリトライします...');
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+      }
+    }
+
+    // すべてのリトライが失敗した場合
+    throw new Error(`検索ページへのアクセスに失敗しました（${maxRetries}回試行）: ${lastError?.message}`);
   }
 
   /**
@@ -200,7 +228,7 @@ export class FacilityScraper {
    *
    * @param page - Puppeteerページインスタンス
    */
-  async selectSports(page: Page): Promise<void> {
+  async selectSports(page: any): Promise<void> {
     try {
       // 屋内スポーツのラジオボタンを選択（JavaScriptで操作）
       await page.evaluate(() => {
@@ -216,7 +244,7 @@ export class FacilityScraper {
 
       // AJAXでスポーツ種目が読み込まれるまで待機
       await page.waitForSelector('#checkPurposeMiddle505', {
-        timeout: 15000,
+        timeout: 30000,
       });
 
       // さらに、要素が実際に表示されるまで待機
@@ -229,7 +257,7 @@ export class FacilityScraper {
           const display = window.getComputedStyle(parent).display;
           return display !== 'none';
         },
-        { timeout: 15000 }
+        { timeout: 30000 }
       );
 
       // DOMが完全に更新されるまで追加で待機
@@ -287,7 +315,7 @@ export class FacilityScraper {
    *
    * @param page - Puppeteerページインスタンス
    */
-  async searchFacilities(page: Page): Promise<void> {
+  async searchFacilities(page: any): Promise<void> {
     try {
       // チェックボックスが選択されているか確認
       const checkboxState = await page.evaluate(() => {
@@ -363,10 +391,10 @@ export class FacilityScraper {
    * @param page - Puppeteerページインスタンス
    * @returns 施設情報の配列
    */
-  async selectAllFacilities(page: Page): Promise<Facility[]> {
+  async selectAllFacilities(page: any): Promise<Facility[]> {
     try {
       // 施設一覧テーブルが表示されるまで待機
-      await page.waitForSelector('table#shisetsu', { timeout: 10000 });
+      await page.waitForSelector('table#shisetsu', { timeout: 30000 });
 
       // 施設のチェックボックスから施設情報を取得
       const facilities = await page.evaluate(() => {
@@ -417,13 +445,13 @@ export class FacilityScraper {
    * 
    * @see docs/design/scraping-flow-design.md (Step 2)
    */
-  async selectAllFacilitiesAndNavigate(page: Page): Promise<void> {
+  async selectAllFacilitiesAndNavigate(page: any): Promise<void> {
     try {
       console.log('📍 全施設を選択中...');
 
       // 施設チェックボックスが表示されるまで待機
       await page.waitForSelector('.shisetsu input[type="checkbox"][name="checkShisetsu"]', {
-        timeout: 10000,
+        timeout: 30000,
       });
 
       // 全施設のチェックボックスを取得して選択
@@ -469,9 +497,9 @@ export class FacilityScraper {
 
       // 「次へ進む」ボタンをクリック
       console.log('📍 施設別空き状況ページへ遷移中...');
-      
+
       await Promise.all([
-        page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 10000 }),
+        page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 60000 }),
         page.click('.navbar .next > a'),
       ]);
 
@@ -509,7 +537,7 @@ export class FacilityScraper {
    *
    * @see docs/design/scraping-flow-design.md (Step 3)
    */
-  async selectDatesOnFacilityCalendar(page: Page, dates: Date[]): Promise<void> {
+  async selectDatesOnFacilityCalendar(page: any, dates: Date[]): Promise<void> {
     try {
       console.log('📍 施設別空き状況ページで日付を選択中...');
 
@@ -528,7 +556,7 @@ export class FacilityScraper {
       const startDateStr = format(firstDate, 'yyyy/MM/dd');
 
       // 表示開始日を設定
-      await page.evaluate((dateStr) => {
+      await page.evaluate((dateStr: string) => {
         const startDateInput = document.querySelector('#dpStartDate') as HTMLInputElement;
         if (startDateInput) {
           startDateInput.value = dateStr;
@@ -547,18 +575,18 @@ export class FacilityScraper {
       await page.click('#btnHyoji');
 
       // ページが更新されるまで待機
-      await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 10000 });
+      await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 30000 });
 
       console.log('✅ 表示期間を1ヶ月に設定完了');
 
       // 日付チェックボックスが表示されるまで待機
       await page.waitForSelector('input[type="checkbox"][name="checkdate"]', {
-        timeout: 10000,
+        timeout: 30000,
       });
 
-      // デバッグ: Phase 2のスクリーンショットを保存
-      await page.screenshot({ path: 'debug-phase2-calendar.png', fullPage: true });
-      console.log('📸 Phase 2のスクリーンショットを保存しました');
+      // デバッグ用スクリーンショットは本番環境では無効化（read-only file system対策）
+      // await page.screenshot({ path: 'debug-phase2-calendar.png', fullPage: true });
+      // console.log('📸 Phase 2のスクリーンショットを保存しました');
 
       // 対象日付をYYYYMMDD形式に変換
       const targetDateStrings = dates.map((date) => format(date, 'yyyyMMdd'));
@@ -615,7 +643,7 @@ export class FacilityScraper {
       console.log('📅 利用可能な日付チェックボックス:', JSON.stringify(availableDates, null, 2));
 
       // 日付を選択（全施設×日付の組み合わせを選択）
-      const result = await page.evaluate((targetDates) => {
+      const result = await page.evaluate((targetDates: string[]) => {
         const checkboxes = Array.from(
           document.querySelectorAll('input[type="checkbox"][name="checkdate"]')
         ) as HTMLInputElement[];
@@ -670,7 +698,7 @@ export class FacilityScraper {
       console.log('📍 時間帯別空き状況ページへ遷移中...');
 
       await Promise.all([
-        page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 10000 }),
+        page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 30000 }),
         page.click('.navbar .next > a'),
       ]);
 
@@ -706,13 +734,13 @@ export class FacilityScraper {
    * ブラウザバックは使用せず、ページ内の「前に戻る」ボタンを使用します。
    * これにより、セッション状態が保持され、次の日付選択が可能になります。
    */
-  async goBackToFacilityCalendar(page: Page): Promise<void> {
+  async goBackToFacilityCalendar(page: any): Promise<void> {
     try {
       console.log('📍 時間帯別空き状況ページから施設別空き状況ページへ戻る...');
 
       // 「前に戻る」ボタンをクリック
       await Promise.all([
-        page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 10000 }),
+        page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 30000 }),
         page.click('.navbar .prev > a'),
       ]);
 
@@ -796,12 +824,12 @@ export class FacilityScraper {
    * 
    * @see docs/design/scraping-flow-design.md (Step 4)
    */
-  async scrapeTimeSlots(page: Page, dates: Date[]): Promise<FacilityAvailability[]> {
+  async scrapeTimeSlots(page: any, dates: Date[]): Promise<FacilityAvailability[]> {
     try {
       console.log('📍 時間帯別空き状況データを取得中...');
 
       // カレンダーが表示されるまで待機
-      await page.waitForSelector('.item .calendar', { timeout: 10000 });
+      await page.waitForSelector('.item .calendar', { timeout: 30000 });
 
       // 全施設のデータを取得
       const facilitiesData = await page.evaluate((targetDates: string[]) => {
@@ -906,8 +934,8 @@ export class FacilityScraper {
       // データを FacilityAvailability[] 形式に変換
       // 同じ施設・同じ日付のデータをマージ
       const results: FacilityAvailability[] = facilitiesData
-        .filter((data): data is NonNullable<typeof data> => data !== null)
-        .map((data, index) => {
+        .filter((data: any): data is NonNullable<typeof data> => data !== null)
+        .map((data: any, index: number) => {
           const facility: Facility = {
             id: `facility-${index}`,
             name: data.facilityName,
@@ -918,8 +946,8 @@ export class FacilityScraper {
           const dateMap = new Map<string, any>();
           
           data.dateAvailability
-            .filter((d): d is NonNullable<typeof d> => d !== null)
-            .forEach((dateData) => {
+            .filter((d: any): d is NonNullable<typeof d> => d !== null)
+            .forEach((dateData: any) => {
               const dateKey = dateData.date;
               
               if (!dateMap.has(dateKey)) {
