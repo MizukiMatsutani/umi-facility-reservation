@@ -14,6 +14,7 @@ import type {
   TimeSlot,
 } from '@/lib/types';
 import { parseFacilities, parseAvailability } from './parser';
+import { filterTimeSlots } from '@/lib/utils/timeFilter';
 
 /**
  * 宇美町施設予約システムのスクレイピングクラス
@@ -109,8 +110,34 @@ export class FacilityScraper {
       console.log('\n📍 複数日のデータをマージ中...');
       const mergedResults = this.mergeFacilityData(allResults);
 
-      console.log(`\n✅ スクレイピング完了: ${mergedResults.length}施設`);
-      return mergedResults;
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // 時間範囲フィルタリング（指定されている場合のみ）
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      let filteredResults = mergedResults;
+      if (timeRange) {
+        console.log(`\n📍 時間範囲フィルタリング適用: ${timeRange.from} - ${timeRange.to}`);
+        filteredResults = mergedResults.map((facilityData) => ({
+          ...facilityData,
+          availability: facilityData.availability.map((avail) => ({
+            ...avail,
+            slots: filterTimeSlots(avail.slots, timeRange),
+          })),
+        }));
+
+        // フィルタリング結果のサマリーを表示
+        const totalSlotsBefore = mergedResults.reduce(
+          (sum, f) => sum + f.availability.reduce((s, a) => s + a.slots.length, 0),
+          0
+        );
+        const totalSlotsAfter = filteredResults.reduce(
+          (sum, f) => sum + f.availability.reduce((s, a) => s + a.slots.length, 0),
+          0
+        );
+        console.log(`   ⏰ フィルタリング前: ${totalSlotsBefore}スロット → フィルタリング後: ${totalSlotsAfter}スロット`);
+      }
+
+      console.log(`\n✅ スクレイピング完了: ${filteredResults.length}施設`);
+      return filteredResults;
     } catch (error) {
       if (error instanceof Error) {
         console.error('❌ スクレイピングエラー:', error.message);
