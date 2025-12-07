@@ -717,34 +717,73 @@
 
 ### 10.1 本番デプロイメント
 
-- [x] 10.1.1 本番環境へのデプロイ
+- [x] 10.1.1 Vercel本番環境へのデプロイ（**失敗・廃止**）
   - ファイル: N/A（Vercelデプロイ）
   - Vercel本番デプロイの実行
   - カスタムドメインの設定（オプション）
   - 目的: アプリケーションの公開
   - _要件: tech.md（デプロイメント）_
-  - _プロンプト: Role: DevOps Engineer with expertise in Vercel production deployments | Task: Deploy application to Vercel production environment, verify deployment succeeds, configure custom domain if provided (or use Vercel default .vercel.app), verify HTTPS works, test production URL with all features, create deployment checklist | Restrictions: Must deploy to production (not preview), verify all environment variables set (if any), test full user journey on production URL, ensure HTTPS certificate works, document production URL | Success: Deployment to production succeeds, HTTPS works correctly, all features functional on production, custom domain configured (if applicable), production URL documented_
   - **完了日**: 2025年12月7日
-  - **本番URL**: https://umi-facility-reservation.vercel.app
+  - **結果**: **失敗 - IPブロッキング問題により本番運用不可**
+  - **本番URL**: ~~https://umi-facility-reservation.vercel.app~~ （接続不可）
+  - **問題**: VercelのIPアドレスが宇美町システムのファイアウォールにブロックされ、`net::ERR_CONNECTION_TIMED_OUT`エラーが発生
+  - **試行した対策**: リトライロジック、User-Agent変更、タイムアウト延長 → すべて失敗
+  - **結論**: Render.comへ移行
 
-### 10.2 ポストデプロイ検証
+- [ ] 10.1.2 Render.com環境のセットアップ
+  - ファイル: N/A（Render.comダッシュボード操作）
+  - Render.comアカウント作成とGitHub連携
+  - Web Serviceの作成（Node.js 20.x）
+  - ビルド・起動コマンドの設定
+  - 目的: Render.comでのホスティング準備
+  - _要件: tech.md（デプロイメント - Render.com）_
+  - _プロンプト: Role: DevOps Engineer with expertise in Render.com and cloud deployments | Task: Set up Render.com account, connect GitHub repository (umi-facility-reservation), create new Web Service with Node.js 20.x environment, configure build command (pnpm install && pnpm build), configure start command (pnpm start), set environment variables (NODE_ENV=production), select free tier plan (750 hours/month) | Restrictions: Must use free tier plan, configure auto-deploy on main branch push, verify GitHub integration works, ensure all environment variables are set correctly, document Render.com dashboard URL | Success: Render.com account created, GitHub connected, Web Service created and configured, build/start commands set correctly, ready for deployment_
 
-- [ ] 10.2.1 本番環境での動作確認
+- [ ] 10.1.3 Render.com本番デプロイの実行
+  - ファイル: N/A（Render.comデプロイ）
+  - mainブランチへのpushでデプロイトリガー
+  - ビルドログの確認
+  - デプロイ成功の確認
+  - 目的: Render.comでのアプリケーション公開
+  - _要件: tech.md（デプロイメント）_
+  - _プロンプト: Role: DevOps Engineer with expertise in deployment troubleshooting | Task: Trigger deployment by pushing to main branch, monitor build logs for errors (Puppeteer installation, Next.js build), verify deployment succeeds, check service health endpoint, note deployment URL (.onrender.com), verify HTTPS certificate works, create deployment checklist | Restrictions: Must monitor entire build process, troubleshoot any Puppeteer/Chromium installation issues, ensure Next.js build completes, verify service starts correctly, document final production URL | Success: Deployment completes successfully, build logs show no errors, service is running, HTTPS works, production URL accessible_
+
+- [ ] 10.1.4 Render.comでのIPブロック問題検証
+  - ファイル: N/A（手動テスト）
+  - Render.com本番環境から宇美町システムへのアクセステスト
+  - スクレイピングAPI（/api/scrape）の動作確認
+  - 接続タイムアウトの有無確認
+  - 目的: Render.comでIPブロック問題が解決されているか検証
+  - _要件: 要件3（スクレイピング）_
+  - _プロンプト: Role: QA Engineer with expertise in network debugging and production validation | Task: Test scraping functionality on Render.com production environment, make POST request to /api/scrape with test dates (2025-12-10), monitor response time (should complete within 30 seconds without connection timeout), verify facility data is returned successfully, compare with Vercel failure logs to confirm IP blocking issue is resolved, document test results | Restrictions: Must test with real宇美町システムaccess (not mocked), verify full scraping flow completes, check for net::ERR_CONNECTION_TIMED_OUT errors, test multiple times to ensure consistency, document response times | Success: Scraping completes successfully without connection timeout, facility data returned correctly, no IP blocking errors, confirms Render.com resolves Vercel issue_
+
+### 10.2 ポストデプロイ検証（Render.com）
+
+- [ ] 10.2.1 Render.com本番環境での動作確認
   - ファイル: N/A（手動テスト）
   - すべての機能の動作確認
   - スクレイピングの実際の動作確認
   - エラーハンドリングの確認
-  - 目的: 本番環境での品質保証
+  - 目的: Render.com本番環境での品質保証
   - _要件: すべての要件_
-  - _プロンプト: Role: QA Lead with expertise in production validation and smoke testing | Task: Execute comprehensive smoke test on production environment, test all user scenarios (search with various date/time combinations, view results, error scenarios), verify actual scraping from 宇美町システム works, test on mobile devices, document any production-specific issues | Restrictions: Must test on production URL, verify real scraping works (not mocked), test all error scenarios (invalid input, rate limiting), test on mobile browsers (iOS Safari, Android Chrome), validate Japanese text displays correctly | Success: All features work correctly in production, real scraping succeeds, error handling works as expected, mobile testing passes, no production-specific issues found_
+  - _プロンプト: Role: QA Lead with expertise in production validation and smoke testing | Task: Execute comprehensive smoke test on Render.com production environment, test all user scenarios (search with various date/time combinations, view results, error scenarios), verify actual scraping from 宇美町システム works, test on mobile devices, measure cold start time (first request after sleep), document any production-specific issues | Restrictions: Must test on Render.com production URL, verify real scraping works (not mocked), test all error scenarios (invalid input, rate limiting), test on mobile browsers (iOS Safari, Android Chrome), validate Japanese text displays correctly, test cold start behavior | Success: All features work correctly in production, real scraping succeeds without IP blocking, error handling works as expected, mobile testing passes, cold start acceptable (<60s), no production-specific issues found_
 
-- [ ] 10.2.2 パフォーマンスモニタリングの確認
+- [ ] 10.2.2 Render.comパフォーマンスモニタリングの確認
   - ファイル: N/A（モニタリング）
-  - Vercel Analyticsの確認
+  - Render.comダッシュボードでのログ確認
   - 初期のエラーログ確認
-  - 目的: 本番環境の健全性確認
+  - レスポンスタイム測定
+  - 目的: Render.com本番環境の健全性確認
   - _要件: 非機能要件（信頼性）_
-  - _プロンプト: Role: DevOps Engineer with expertise in application monitoring and Vercel Analytics | Task: Set up basic monitoring using Vercel's built-in analytics and logs, verify no errors in production logs, check initial performance metrics (response times, error rates), document how to access logs and analytics, create monitoring checklist for ongoing maintenance | Restrictions: Must use Vercel's free tier monitoring tools, verify no errors in first 24 hours, document log access procedures, note any performance anomalies, create simple monitoring runbook | Success: Vercel Analytics accessible, no errors in production logs, initial performance metrics normal, log access documented, monitoring runbook created_
+  - _プロンプト: Role: DevOps Engineer with expertise in application monitoring and Render.com | Task: Set up basic monitoring using Render.com's dashboard and logs, verify no errors in production logs, check initial performance metrics (response times, error rates, cold start times), document how to access logs and metrics, create monitoring checklist for ongoing maintenance, note service sleep/wake behavior | Restrictions: Must use Render.com's free tier monitoring tools, verify no errors in first 24 hours, document log access procedures, measure cold start impact, note any performance anomalies, create simple monitoring runbook | Success: Render.com logs accessible, no errors in production logs, initial performance metrics acceptable (cold start <60s, scraping <30s), log access documented, monitoring runbook created_
+
+- [ ] 10.2.3 Vercel環境のクリーンアップ（オプション）
+  - ファイル: N/A（Vercelダッシュボード操作）
+  - Vercel本番デプロイメントの削除または無効化
+  - カスタムドメインの解除（設定している場合）
+  - 目的: 不要なVercel環境のクリーンアップ
+  - _要件: なし（クリーンアップタスク）_
+  - _プロンプト: Role: DevOps Engineer with expertise in infrastructure cleanup | Task: Archive or delete Vercel production deployment (umi-facility-reservation.vercel.app), remove custom domain if configured, document reason for migration in Vercel project settings (IP blocking issue), keep project for reference but mark as inactive, update README.md to reflect Render.com as production platform | Restrictions: Must document migration reason clearly, keep deployment history for reference if needed, update all documentation to point to Render.com, verify no active users before cleanup | Success: Vercel deployment archived or deleted, documentation updated, migration reason documented, no orphaned resources_
 
 ## 完了基準
 
@@ -772,9 +811,10 @@
 - ✅ README.md、API仕様書、ユーザーマニュアルが完成
 
 ### デプロイメント
-- ✅ Vercel本番環境へのデプロイ成功
-- ✅ 本番環境での動作確認完了
-- ✅ 監視とログの設定完了
+- ~~Vercel本番環境へのデプロイ成功~~ → **失敗（IPブロック問題）**
+- Render.com本番環境へのデプロイ成功（未完了）
+- Render.com本番環境での動作確認完了（未完了）
+- Render.com監視とログの設定完了（未完了）
 
 ## 備考
 
