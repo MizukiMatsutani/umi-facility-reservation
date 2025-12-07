@@ -9,7 +9,6 @@ import { format } from 'date-fns';
 import type {
   Facility,
   AvailabilityData,
-  TimeRange,
   FacilityAvailability,
   TimeSlot,
 } from '@/lib/types';
@@ -28,15 +27,16 @@ export class FacilityScraper {
    * スクレイピング実行（メインオーケストレーションメソッド）
    *
    * @param dates - 検索対象の日付配列
+   * @param timeRange - オプションの時間範囲フィルタ
    * @returns 施設ごとの空き状況データ
    */
   async scrapeFacilities(
-    dates: Date[],
-    timeRange?: TimeRange
+    dates: Date[]
+  ): Promise<FacilityAvailability[]> {
     try {
       console.log('🚀 スクレイピング開始: 日付ごとの繰り返しフロー');
       console.log(`📅 対象日数: ${dates.length}日`);
-      if (timeRange) {
+
       await this.initBrowser();
       const page = await this.browser!.newPage();
 

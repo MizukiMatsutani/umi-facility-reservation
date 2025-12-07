@@ -1,0 +1,17 @@
+{
+  "name": "宇美町施設予約検索",
+  "short_name": "施設予約検索",
+  "description": "宇美町の体育施設（バスケットボール・ミニバスケットボール）の空き状況を検索できます",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "/images/MITCHELL.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

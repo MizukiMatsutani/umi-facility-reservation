@@ -16,6 +16,20 @@ export const metadata: Metadata = {
   title: "宇美町施設予約検索",
   description: "宇美町の体育施設（バスケットボール・ミニバスケットボール）の空き状況を検索できます",
   robots: "index, follow",
+  manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/images/MITCHELL.png", sizes: "any", type: "image/png" }
+    ],
+    apple: [
+      { url: "/images/MITCHELL.png", sizes: "any", type: "image/png" }
+    ]
+  },
+  appleWebApp: {
+    capable: true,
+    title: "施設予約検索",
+    statusBarStyle: "default",
+  },
 };
 
 // ビューポート設定（モバイル最適化）

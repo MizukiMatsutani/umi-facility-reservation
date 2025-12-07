@@ -1,0 +1,32 @@
+# Render.comのコールドスタート防止用GitHub Actions
+#
+# 注意: この設定を有効にする前に以下を確認してください:
+# 1. Renderの無料プランは月間750時間まで稼働可能
+# 2. このワークフローは平日9-21時のみpingを送信（月間約260時間）
+# 3. 実際のユーザーアクセスと合わせても無料枠内に収まることを確認
+# 4. 使用する場合は .example を削除してください
+
+name: Keep Render Service Alive
+
+on:
+  schedule:
+    # 平日（月-金）の9時から21時まで、15分ごとに実行
+    # UTCなので日本時間から9時間引く: JST 9:00 = UTC 0:00, JST 21:00 = UTC 12:00
+    - cron: '*/15 0-12 * * 1-5'
+
+  workflow_dispatch: # 手動実行も可能
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ping Render Service
+        run: |
+          # Render.comのアプリURLにGETリクエストを送信
+          # あなたのアプリのURLに置き換えてください
+          curl -f https://your-app-name.onrender.com || echo "Ping failed"
+
+      - name: Check Response
+        run: |
+          echo "Ping completed at $(date)"
