@@ -143,7 +143,7 @@ export default function Home() {
                     onSubmit={handleSubmit}
                     onValidationError={handleValidationError}
                     isLoading={isLoading}
-                    initialDates={lastSearchParams?.dates}
+                    initialDates={lastSearchParams?.dates ? [...lastSearchParams.dates] : undefined}
                   />
                 </div>
               </div>

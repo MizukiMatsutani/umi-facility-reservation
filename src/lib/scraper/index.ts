@@ -723,25 +723,33 @@ export class FacilityScraper {
    * - 日付順にソート
    */
   private mergeFacilityData(results: FacilityAvailability[]): FacilityAvailability[] {
-    const facilityMap = new Map<string, FacilityAvailability>();
+    const facilityMap = new Map<string, AvailabilityData[]>();
 
     results.forEach((result) => {
       const facilityName = result.facility.name;
 
       if (!facilityMap.has(facilityName)) {
-        // 初めて見る施設の場合、そのまま追加
-        facilityMap.set(facilityName, result);
+        // 初めて見る施設の場合、新しい配列を作成
+        facilityMap.set(facilityName, [...result.availability]);
       } else {
         // 既に存在する施設の場合、availability を結合
         const existing = facilityMap.get(facilityName)!;
-        existing.availability.push(...result.availability);
+        existing.push(...result.availability);
       }
     });
 
-    // 各施設の availability を日付順にソート
-    const mergedResults = Array.from(facilityMap.values());
-    mergedResults.forEach((result) => {
-      result.availability.sort((a, b) => a.date.getTime() - b.date.getTime());
+    // 各施設の availability を日付順にソートして新しいオブジェクトを作成
+    const mergedResults = Array.from(facilityMap.entries()).map(([facilityName, availability]) => {
+      // 日付順にソート
+      const sortedAvailability = availability.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+      // 元の結果から施設情報を取得
+      const originalResult = results.find(r => r.facility.name === facilityName)!;
+
+      return {
+        facility: originalResult.facility,
+        availability: sortedAvailability,
+      };
     });
 
     return mergedResults;

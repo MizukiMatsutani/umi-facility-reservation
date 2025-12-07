@@ -117,6 +117,8 @@ export function parseAvailability(html: string): TimeSlot[] {
       slots.push({
         time,
         available,
+        status: available ? 'all-available' : 'unavailable',
+        courts: [], // 古いparser関数ではコート情報なし
       });
     });
 
