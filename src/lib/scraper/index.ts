@@ -5,8 +5,8 @@
  * 空き状況データを取得します。
  */
 
-import puppeteer, { Browser, Page } from 'puppeteer';
 import { format } from 'date-fns';
+import type { Browser, Page } from 'puppeteer-core';
 import type {
   Facility,
   AvailabilityData,
@@ -133,14 +133,33 @@ export class FacilityScraper {
    * --no-sandbox と --disable-setuid-sandbox はVercelで必要な設定です。
    */
   async initBrowser(): Promise<void> {
-    this.browser = await puppeteer.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-      ],
-    });
+    // Vercel環境かどうかを判定
+    const isVercel = process.env.VERCEL === '1';
+
+    if (isVercel) {
+      // Vercel環境：puppeteer-coreと@sparticuz/chromiumを使用
+      const chromium = await import('@sparticuz/chromium');
+      const puppeteerCore = await import('puppeteer-core');
+
+      this.browser = await puppeteerCore.default.launch({
+        args: [...chromium.default.args, '--no-sandbox', '--disable-setuid-sandbox'],
+        defaultViewport: { width: 1280, height: 720 },
+        executablePath: await chromium.default.executablePath(),
+        headless: true,
+      });
+    } else {
+      // ローカル環境：通常のpuppeteerを使用
+      const puppeteer = await import('puppeteer');
+
+      this.browser = await puppeteer.default.launch({
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+        ],
+      });
+    }
   }
 
   /**
