@@ -141,6 +141,9 @@ export class FacilityScraper {
       const chromium = await import('@sparticuz/chromium');
       const puppeteerCore = await import('puppeteer-core');
 
+      // Vercel環境では日本語フォントを除外してバイナリサイズを削減
+      chromium.default.setGraphicsMode = false;
+
       this.browser = await puppeteerCore.default.launch({
         args: [...chromium.default.args, '--no-sandbox', '--disable-setuid-sandbox'],
         defaultViewport: { width: 1280, height: 720 },
