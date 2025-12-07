@@ -1,6 +1,6 @@
 {
   "filePath": ".spec-workflow/specs/umi-facility-search/requirements.md",
-  "currentVersion": 3,
+  "currentVersion": 4,
   "snapshots": [
     {
       "version": 1,
@@ -25,6 +25,14 @@
       "trigger": "approved",
       "approvalId": "approval_1764945449487_bfsw19am0",
       "approvalTitle": "要件定義ドキュメント (requirements.md) の承認 [修正版2]"
+    },
+    {
+      "version": 4,
+      "filename": "snapshot-004.json",
+      "timestamp": "2025-12-06T13:49:40.050Z",
+      "trigger": "approved",
+      "approvalId": "approval_1765014483431_5yfs0sqmk",
+      "approvalTitle": "要件定義書の更新 - Phase 2を必須機能として明確化"
     }
   ]
 }

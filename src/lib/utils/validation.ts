@@ -11,7 +11,7 @@ import type { TimeRange } from '@/lib/types';
  * 検索パラメータ（日付配列）をバリデーションします
  *
  * @param {Date[]} dates - バリデーション対象の日付配列
- * @throws {Error} 日付配列が空の場合
+ * @throws {Error} 日付配列が空の場合、または7日を超える場合
  *
  * @example
  * validateSearchParams([new Date('2025-12-06')]);
@@ -19,11 +19,19 @@ import type { TimeRange } from '@/lib/types';
  *
  * validateSearchParams([]);
  * // Error: 検索する日付を1つ以上選択してください
+ *
+ * validateSearchParams([...Array(8)].map((_, i) => new Date(Date.now() + i * 24 * 60 * 60 * 1000)));
+ * // Error: 検索期間は最大7日間までです
  */
 export function validateSearchParams(dates: Date[]): void {
   // 日付配列が空の場合はエラー
   if (dates.length === 0) {
     throw new Error('検索する日付を1つ以上選択してください');
+  }
+
+  // 7日を超える場合はエラー
+  if (dates.length > 7) {
+    throw new Error('検索期間は最大7日間までです');
   }
 
   // 過去の日付が含まれている場合は警告（エラーではない）

@@ -1,5 +1,15 @@
 # Design Document
 
+## 更新履歴
+
+| 日付 | バージョン | 変更内容 |
+|------|-----------|---------|
+| 2025-12-07 | 2.3 | 複数日選択時の日付ごとループ処理、「－」選択対応、戻るボタン処理を追加 |
+| 2025-12-07 | 2.2 | UI改善と検索制限の追加：7日間制限、表示期間1ヶ月設定、連続空き時間サマリ |
+| 2025-12-07 | 2.1 | タイムゾーン制約の追加、Step 4ページ構造の詳細化 |
+| 2025-12-06 | 2.0 | Phase 2実装完了に伴う4ステップフローの反映 |
+| 2025-12-05 | 1.0 | 初版作成 |
+
 ## 概要
 
 宇美町施設予約検索システム（umi-facility-search）は、Next.js 15.x (App Router)を使用したモバイルファーストのWebアプリケーションです。本設計では、requirements.mdで定義された6つの主要要件を実現するための技術設計を詳細に定義します。
@@ -113,7 +123,7 @@ graph TD
 
 ### 1. SearchForm コンポーネント
 
-**目的**: 日付と時間帯を選択して検索を実行するフォーム
+**目的**: 日付を選択して検索を実行するフォーム
 
 **ファイル**: `src/components/SearchForm.tsx`
 
@@ -122,34 +132,24 @@ graph TD
 interface SearchFormProps {
   onSubmit: (params: SearchParams) => void;
   isLoading?: boolean;
-  initialDates?: Date[];      // NEW: エラー時の入力状態保持用
-  initialTimeRange?: TimeRange;  // NEW: エラー時の入力状態保持用
+  initialDates?: Date[];      // エラー時の入力状態保持用
 }
 
 interface SearchParams {
   dates: Date[];           // 選択された日付の配列
-  timeRange?: TimeRange;   // オプションの時間範囲
-}
-
-interface TimeRange {
-  from: string;  // 開始時刻（例: "9:00"）
-  to: string;    // 終了時刻（例: "12:00"）
 }
 ```
 
 **State:**
 ```typescript
 const [selectedDates, setSelectedDates] = useState<Date[]>(initialDates);
-const [timeRange, setTimeRange] = useState<TimeRange | undefined>(initialTimeRange);
 const [validationError, setValidationError] = useState<string>('');
-const [resetKey, setResetKey] = useState<number>(0); // NEW: リセット用のキー
+const [resetKey, setResetKey] = useState<number>(0); // リセット用のキー
 ```
 
 **依存関係:**
 - `DatePicker` (UI component)
-- `TimePicker` (UI component)
 - `QuickDateSelect` (UI component)
-- `Button` (UI component)
 
 **再利用するもの:**
 - TailwindCSSのモバイルファーストスタイル
@@ -160,9 +160,9 @@ const [resetKey, setResetKey] = useState<number>(0); // NEW: リセット用の�
 - 「本日から1週間」クイックボタン
 - バリデーション（日付未選択エラー）
 - 検索パラメータの送信
-- **NEW: リセットボタンの表示とリセット機能**
-- **NEW: エラー時の入力状態保持（initialDates/initialTimeRange経由）**
-- **NEW: コンポーネント再マウントによる完全なリセット（resetKey使用）**
+- リセットボタンの表示とリセット機能
+- エラー時の入力状態保持（initialDates経由）
+- コンポーネント再マウントによる完全なリセット（resetKey使用）
 
 ### 2. DatePicker コンポーネント
 
@@ -210,34 +210,7 @@ interface QuickDateSelectProps {
 - 本日から7日間の配列を生成
 - ボタンクリックでコールバック実行
 
-### 4. TimePicker コンポーネント
-
-**目的**: 時間範囲選択UI（From - To）
-
-**ファイル**: `src/components/ui/TimePicker.tsx`
-
-**Props:**
-```typescript
-interface TimePickerProps {
-  selectedRange?: TimeRange;
-  onChange: (range: TimeRange | undefined) => void;
-}
-
-interface TimeRange {
-  from: string;  // 開始時刻（例: "9:00"）
-  to: string;    // 終了時刻（例: "12:00"）
-}
-```
-
-**依存関係:** なし
-
-**責任:**
-- 開始時刻（From）のドロップダウン表示（8:30, 9:00, 9:30, ...）
-- 終了時刻（To）のドロップダウン表示（8:30, 9:00, 9:30, ...）
-- バリデーション（Toは From より後の時刻であること）
-- 未選択 = 全時間帯検索
-
-### 5. LoadingSpinner コンポーネント
+### 4. LoadingSpinner コンポーネント
 
 **目的**: ローディング状態の視覚表示
 
@@ -256,7 +229,7 @@ interface LoadingSpinnerProps {
 - アニメーション付きスピナー表示
 - 進行状況メッセージ表示
 
-### 6. FacilityCard コンポーネント
+### 5. FacilityCard コンポーネント
 
 **目的**: 施設情報と空き状況を表示するカード
 
@@ -284,10 +257,18 @@ interface AvailabilityData {
   slots: TimeSlot[];
 }
 
-interface TimeSlot {
-  startTime: string;   // "08:30"
-  endTime: string;     // "09:00"
+interface CourtStatus {
+  name: string;        // コート名（"全面", "倉庫側", "壁側"など）
   available: boolean;  // true = 空き, false = 空いていない
+}
+
+type AvailabilityStatus = 'all-available' | 'partially-available' | 'unavailable';
+
+interface TimeSlot {
+  time: string;                           // 時刻（"8:30", "9:00"など）
+  available: boolean;                     // true = いずれかのコートが空き
+  status: AvailabilityStatus;             // 空き状況のステータス
+  courts: readonly CourtStatus[];         // コート別の空き状況
 }
 ```
 
@@ -297,37 +278,41 @@ interface TimeSlot {
 
 **責任:**
 - 施設名の表示
-- スポーツ種目の表示（バスケットボール/ミニバスケットボール）
+- ~~スポーツ種目の表示（バスケットボール/ミニバスケットボール）~~ **削除済み** - ユーザーにとって不要な情報
 - 日付ごとの空き状況表示
 - 展開/折りたたみ状態管理
-- **NEW: 空き状況データがない場合の外部リンク表示**
+- **コートごとの連続空き時間サマリ表示**（アコーディオンヘッダー内）
+  - 各コート名と連続空き時間を表示（例: "倉庫側\n　8:30-14:00、16:30-21:30"）
+  - 複数の連続空き時間はカンマ区切りで同じ行に表示
+  - 空きがないコートは表示しない
+- **空き状況データがない場合の外部リンク表示**
   - 「空き状況データがありません」メッセージ
   - 宇美町の公式サイトへのリンク（target="_blank"）
   - 外部リンクアイコンの表示
 
-### 7. AvailabilityList コンポーネント
+### 6. AvailabilityList コンポーネント
 
-**目的**: 時間帯ごとの空き状況リスト
+**目的**: ガントチャート風の空き状況表示（時間帯×コート）
 
 **ファイル**: `src/components/AvailabilityList.tsx`
 
 **Props:**
 ```typescript
 interface AvailabilityListProps {
-  slots: TimeSlot[];
-  showAll: boolean;  // true = 全時間帯, false = 空きのみ
-  onToggle: () => void;
+  slots: readonly TimeSlot[];  // 表示する時間帯のリスト
+  dateLabel?: string;          // 日付文字列（表示用）
 }
 ```
 
 **依存関係:** なし
 
 **責任:**
-- 時間帯リストの表示
-- 空き/空いていないの視覚的区別
-- 展開ボタンの表示
+- テーブル形式での空き状況表示（時間×コート）
+- 時間帯を縦軸、コート名を横軸に配置（最大3コート）
+- 色分け表示（緑=○空き、グレー=×満）
+- 凡例の表示
 
-### 8. ErrorMessage コンポーネント
+### 7. ErrorMessage コンポーネント
 
 **目的**: エラーメッセージと再試行ボタンの表示
 
@@ -347,7 +332,7 @@ interface ErrorMessageProps {
 - エラータイプに応じたメッセージ表示
 - 再試行ボタンの表示
 
-### 9. API Route: /api/scrape
+### 8. API Route: /api/scrape
 
 **目的**: スクレイピング処理を実行してデータを返す
 
@@ -356,13 +341,7 @@ interface ErrorMessageProps {
 **リクエスト:**
 ```typescript
 interface ScrapeRequest {
-  dates: string[];         // ISO 8601形式の日付配列
-  timeRange?: TimeRange;   // オプションの時間範囲
-}
-
-interface TimeRange {
-  from: string;  // 開始時刻（例: "9:00"）
-  to: string;    // 終了時刻（例: "12:00"）
+  dates: string[];         // ISO 8601形式の日付配列（YYYY-MM-DD）
 }
 ```
 
@@ -414,9 +393,18 @@ interface AvailabilityData {
 ### TimeSlot（時間帯）
 
 ```typescript
-interface TimeSlot {
-  time: string;        // 時刻（"8:30", "9:00", etc.）
+interface CourtStatus {
+  name: string;        // コート名（"全面", "倉庫側", "壁側"など）
   available: boolean;  // true = 空き, false = 空いていない
+}
+
+type AvailabilityStatus = 'all-available' | 'partially-available' | 'unavailable';
+
+interface TimeSlot {
+  time: string;                           // 時刻（"8:30", "9:00"など）
+  available: boolean;                     // true = いずれかのコートが空き
+  status: AvailabilityStatus;             // 空き状況のステータス
+  courts: readonly CourtStatus[];         // コート別の空き状況
 }
 ```
 
@@ -424,13 +412,7 @@ interface TimeSlot {
 
 ```typescript
 interface SearchParams {
-  dates: Date[];           // 検索対象日付の配列
-  timeRange?: TimeRange;   // 指定時間範囲（オプション）
-}
-
-interface TimeRange {
-  from: string;  // 開始時刻（例: "9:00"）
-  to: string;    // 終了時刻（例: "12:00"）
+  dates: Date[];  // 検索対象日付の配列
 }
 ```
 
@@ -439,13 +421,7 @@ interface TimeRange {
 ```typescript
 // POST /api/scrape リクエスト
 interface ScrapeRequest {
-  dates: string[];         // ISO 8601形式の日付配列
-  timeRange?: TimeRange;   // オプションの時間範囲
-}
-
-interface TimeRange {
-  from: string;  // 開始時刻（例: "9:00"）
-  to: string;    // 終了時刻（例: "12:00"）
+  dates: string[];  // YYYY-MM-DD形式の日付配列
 }
 
 // POST /api/scrape レスポンス
@@ -490,7 +466,9 @@ Phase 2は当初「延期」としていましたが、以下の理由により�
 
 詳細は `docs/investigation/implementation-gap-analysis.md` を参照
 
-### スクレイピングフロー（Phase 2完全版）
+### スクレイピングフロー（Phase 2完全版 - 2025-12-06更新）
+
+**重要な変更**: 調査により、実際のフローは以下の4ステップであることが判明しました。
 
 ```mermaid
 sequenceDiagram
@@ -502,37 +480,51 @@ sequenceDiagram
     UI->>API: POST /api/scrape {dates, timeRange}
     API->>SC: scrapeFacilities(dates, timeRange)
 
-    Note over SC,EXT: Phase 1: 施設一覧まで取得
-    SC->>EXT: 1. navigate to search page
-    EXT-->>SC: HTML response
-    SC->>SC: 2. selectSports()
-    SC->>SC: 3. searchFacilities()
-    SC->>SC: 4. selectAllFacilities()
+    Note over SC,EXT: Step 1: 検索ページ (WgR_ModeSelect)
+    SC->>EXT: 1. navigateToSearchPage()
+    EXT-->>SC: 検索ページHTML
+    SC->>SC: 2. selectSports() - 屋内スポーツ+バスケットボール
+    SC->>SC: 3. searchFacilities() - 検索ボタンクリック
 
-    Note over SC,EXT: Phase 2: 各日付・各施設の空き状況取得
-    loop 各施設
-        loop 各日付
-            SC->>SC: 5. selectFacilityCheckbox(facility)
-            SC->>SC: 6. clickNextButton()
-            SC->>EXT: → 日付選択ページへ遷移
-            EXT-->>SC: 日付選択ページHTML
+    Note over SC,EXT: Step 2: 施設検索ページ (WgR_ShisetsuKensaku)
+    SC->>EXT: → 施設一覧ページへ遷移
+    EXT-->>SC: 施設一覧ページHTML
+    SC->>SC: 4. selectAllFacilitiesAndNavigate() - 全施設をlabel.click()で選択
+    Note over SC: ★重要: checkbox.checked=trueではなくlabel.click()を使用
 
-            SC->>SC: 7. selectDate(date)
-            SC->>EXT: → 空き状況ページへ遷移
-            EXT-->>SC: 空き状況ページHTML
+    Note over SC,EXT: Step 3: 施設別空き状況ページ (WgR_ShisetsubetsuAkiJoukyou) ★新発見★
+    SC->>EXT: → 施設別空き状況ページへ遷移
+    EXT-->>SC: 施設別カレンダーページHTML (各施設×日付のマトリックス)
+    SC->>SC: 5a. setDisplayPeriodToOneMonth() - 表示期間を1ヶ月に設定
+    Note over SC: 検索日の最初の日から1ヶ月表示に変更<br/>#dpStartDate, #radioPeriod1month, #btnHyoji
+    SC->>SC: 5b. selectDatesOnFacilityCalendar(dates) - 対象日付を選択
+    Note over SC: ○または△のみ選択、最大7日まで（本システム制限）<br/>日付format: YYYYMMDD + 施設コード
 
-            SC->>SC: 8. scrapeAvailability()
-            Note over SC: 時間帯テーブルをパース
-
-            SC->>EXT: ← 戻る（日付選択ページ）
-            SC->>EXT: ← 戻る（施設一覧ページ）
-        end
-    end
+    Note over SC,EXT: Step 4: 時間帯別空き状況ページ (WgR_JikantaibetsuAkiJoukyou)
+    SC->>EXT: → 時間帯別空き状況ページへ遷移
+    EXT-->>SC: 時間帯別空き状況ページHTML
+    SC->>SC: 6. scrapeTimeSlots() - 全施設×全時間帯を一括取得
+    Note over SC: 施設ごとのコート×時間帯テーブルをパース
 
     SC-->>API: FacilityAvailability[]
     API-->>UI: JSON response
     UI->>UI: 空き状況を表示
 ```
+
+**旧設計との主な違い:**
+
+1. **Step 3（施設別空き状況ページ）の存在**
+   - 旧設計では見落としていたページ
+   - ここで日付を選択する（検索フォームに日付入力欄はない）
+   - 各施設ごとにカレンダーが表示される
+
+2. **フロー全体が1回の処理**
+   - 旧設計: 施設ごと・日付ごとにループして複数回遷移
+   - 新設計: 全施設選択 → 全日付選択 → 一括で空き状況取得
+
+3. **チェックボックス選択方法**
+   - 旧設計: `checkbox.checked = true; checkbox.click();`
+   - 新設計: `label.click();` （イベントハンドラーの制約により必須）
 
 ### Scraper クラス
 
@@ -548,43 +540,121 @@ sequenceDiagram
 - ✅ `navigateToSearchPage()` - 初期ページへのアクセス
 - ✅ `selectSports()` - スポーツ種目の選択（AJAX対応、label要素クリック）
 - ✅ `searchFacilities()` - 検索実行（searchMokuteki()関数呼び出し）
-- ✅ `selectAllFacilities()` - 施設一覧取得
-- ⏳ `selectFacilityAndNavigate()` - 施設選択と「次へ進む」クリック（Phase 2実装中）
-- ⏳ `selectDateAndNavigate()` - 日付選択とページ遷移（Phase 2実装中）
-- ⏳ `scrapeAvailability()` - 空き状況ページのパース（Phase 2実装中）
-- ⏳ `navigateBack()` - ブラウザの戻る操作（Phase 2実装中）
+- ✅ `selectAllFacilities()` - 施設一覧取得（Phase 1版）
+- ✅ `selectAllFacilitiesAndNavigate()` - 全施設選択+次へ進む（Phase 2完了）
+- ✅ `selectDatesOnFacilityCalendar()` - 施設別空き状況ページで日付選択（Phase 2完了）
+- ✅ `scrapeTimeSlots()` - 時間帯別空き状況の一括取得（Phase 2完了）
+- ✅ `scrapeFacilities()` - 全体フローの統合実行（Phase 2完了）
+- ❌ `selectFacilityAndNavigate()` - 削除予定（旧設計の誤認に基づくメソッド）
+- ❌ `navigateBack()` - 不要（新フローでは戻る操作なし）
 
-**主要メソッド（Phase 1実装版）:**
+**Phase 2の重要な技術的発見:**
+- チェックボックス選択は `label.click()` を使用（`checkbox.checked = true` は動作しない）
+- 日付valueフォーマット: `YYYYMMDD` + 施設コード（例: "2025121100701   0"）
+- 空き状況ラベル: ○（空き）、△（一部空き）のみ選択、×（満席）、－（対象外）、休（休館日）はスキップ
+- 最大10日まで選択可能（システム制約）
+
+**主要メソッド（Phase 2完了版）:**
 
 ```typescript
 class FacilityScraper {
   private browser: Browser | null = null;
 
   /**
-   * スクレイピング実行（Phase 1版）
+   * スクレイピング実行（Phase 2完了版 - 2025-12-06更新）
+   *
+   * @param dates - 対象日付の配列（最大10日）
+   * @returns 施設ごとの空き状況
    */
-  async scrapeFacilities(): Promise<FacilityAvailability[]> {
+  async scrapeFacilities(dates: Date[]): Promise<FacilityAvailability[]> {
     await this.initBrowser();
 
     try {
       const page = await this.browser!.newPage();
 
-      // Phase 1: 施設一覧まで取得
+      // Step 1: 検索ページ
       await this.navigateToSearchPage(page);
       await this.selectSports(page);
       await this.searchFacilities(page);
-      const facilities = await this.selectAllFacilities(page);
 
-      // Phase 1では空き状況は空配列
-      const results: FacilityAvailability[] = facilities.map(facility => ({
-        facility,
-        availability: []  // Phase 2で実装予定
-      }));
+      // Step 2: 施設検索ページ - 全施設を選択して次へ
+      await this.selectAllFacilitiesAndNavigate(page);
 
-      return results;
+      // Step 3: 施設別空き状況ページ - 対象日付を選択して次へ
+      await this.selectDatesOnFacilityCalendar(page, dates);
+
+      // Step 4: 時間帯別空き状況ページ - 空き状況を一括取得
+      const availabilityData = await this.scrapeTimeSlots(page);
+
+      return availabilityData;
     } finally {
       await this.closeBrowser();
     }
+  }
+
+  /**
+   * Step 2: 全施設を選択して次へ進む
+   * 重要: label.click()を使用（checkbox.checked=trueでは動作しない）
+   */
+  private async selectAllFacilitiesAndNavigate(page: Page): Promise<void> {
+    const checkboxes = await page.$$('.shisetsu input[type="checkbox"][name="checkShisetsu"]');
+
+    for (const checkbox of checkboxes) {
+      const id = await checkbox.evaluate(el => el.id);
+      await page.evaluate((id) => {
+        const label = document.querySelector(`label[for="${id}"]`);
+        if (label) label.click();
+      }, id);
+    }
+
+    await page.click('.navbar .next > a');
+    await page.waitForNavigation({ waitUntil: 'networkidle0' });
+  }
+
+  /**
+   * Step 3: 施設別空き状況ページで日付を選択
+   * 日付valueフォーマット: YYYYMMDD + 施設コード
+   * ○または△のみ選択
+   */
+  private async selectDatesOnFacilityCalendar(page: Page, dates: Date[]): Promise<void> {
+    const dateStrings = dates.map(date => format(date, 'yyyyMMdd'));
+
+    await page.evaluate((dateStrings) => {
+      const checkboxes = document.querySelectorAll('input[name="checkdate"]');
+
+      checkboxes.forEach(checkbox => {
+        const dateValue = checkbox.value.substring(0, 8);
+
+        if (dateStrings.includes(dateValue)) {
+          const label = document.querySelector(`label[for="${checkbox.id}"]`);
+          const status = label?.textContent?.trim();
+
+          // ○または△のみ選択
+          if (status === '○' || status === '△') {
+            label.click();
+          }
+        }
+      });
+    }, dateStrings);
+
+    await page.click('.navbar .next > a');
+    await page.waitForNavigation({ waitUntil: 'networkidle0' });
+  }
+
+  /**
+   * Step 4: 時間帯別空き状況を一括取得
+   *
+   * 重要な実装ポイント:
+   * - 各カレンダーテーブルから時間帯ヘッダーを抽出（3列目以降のth要素）
+   * - 各コート行からコート名を抽出（td.shisetsu）
+   * - 時間帯×コートのマトリックスで空き状況（○/×）を取得
+   * - CourtStatus配列を生成し、AvailabilityStatusを計算
+   * - 重複するカレンダー（同じ施設+日付）をMapでマージ
+   */
+  private async scrapeTimeSlots(page: Page, dates: Date[]): Promise<FacilityAvailability[]> {
+    // 各施設のカレンダーを取得して解析
+    // コート単位の詳細な空き状況を抽出
+    // 詳細は実装ファイルを参照
   }
 
   /**
@@ -728,36 +798,12 @@ class FacilityScraper {
 }
 ```
 
-**Phase 2で実装予定のメソッド:**
+**Phase 2実装完了のまとめ:**
 
-```typescript
-/**
- * 日付と施設の選択（Phase 2）
- */
-private async selectDateAndFacility(
-  page: Page,
-  facility: Facility,
-  dates: Date[]
-): Promise<void> {
-  // 施設選択
-  // 日付選択ページへ遷移
-  // 指定日付を選択
-  // 次へ進むボタンをクリック
-}
-
-/**
- * 空き状況スクレイピング（Phase 2）
- */
-private async scrapeAvailability(
-  page: Page,
-  dates: Date[],
-  timeRange?: TimeRange
-): Promise<AvailabilityData[]> {
-  // 時間帯テーブルから空き状況を抽出
-  // ◯（空き）、△（やや空き）、✕（空いていない）を判定
-  // timeRangeが指定されている場合は、from-toの範囲のみフィルタリング
-}
-```
+- ✅ 4ステップのスクレイピングフロー実装完了
+- ✅ コート単位の詳細な空き状況取得
+- ✅ 重複カレンダーのマージ処理実装
+- ✅ CourtStatus / AvailabilityStatus型の導入
 
 ### HTMLParser
 
@@ -1032,11 +1078,10 @@ requirements.mdに従い、TDDアプローチでユニットテストを実装�
        expect(() => validateSearchParams({ dates: [] })).toThrow();
      });
 
-     it('時間範囲のFromがToより後の場合はエラーを投げること', () => {
+     it('日付が正常な場合はエラーを投げないこと', () => {
        expect(() => validateSearchParams({
          dates: [new Date()],
-         timeRange: { from: '12:00', to: '9:00' }
-       })).toThrow();
+       })).not.toThrow();
      });
    });
    ```
@@ -1214,131 +1259,290 @@ module.exports = nextConfig;
 
 ## Phase 2 新規メソッドの設計
 
-### selectFacilityAndNavigate(page, facility)
+---
 
-**目的**: 施設を選択して日付選択ページに遷移
+## Phase 2調査結果と実装詳細（2025-12-06更新）
 
-**処理フロー**:
-1. 施設のチェックボックスを選択
-2. 「次へ進む」ボタンをクリック
-3. 日付選択ページへの遷移を待機
+### 調査で判明した重要な事実
 
-**実装詳細**:
-```typescript
-private async selectFacilityAndNavigate(page: Page, facility: Facility): Promise<void> {
-  // 1. 施設のチェックボックスを選択
-  await page.evaluate((facilityId) => {
-    const checkbox = document.querySelector(`input[name="checkShisetsu"][value="${facilityId}"]`);
-    if (checkbox) {
-      (checkbox as HTMLInputElement).checked = true;
-    }
-  }, facility.id);
+**問題の根本原因:**
+1. 検索フォームに日付入力フィールドは存在しない
+2. 中間ページ（Step 3: 施設別空き状況ページ）が存在する
+3. チェックボックス選択は `label.click()` が必須
 
-  // 2. 「次へ進む」ボタンをクリック
-  const navigationPromise = page.waitForNavigation({
-    waitUntil: 'networkidle0',
-    timeout: 10000
-  });
-
-  await page.click('#btnNext'); // 「次へ進む」ボタンのID（要調査）
-
-  await navigationPromise;
-}
+**正しいページ遷移フロー:**
+```
+Step 1: WgR_ModeSelect (検索ページ)
+  ↓ スポーツ選択 + 検索ボタン
+Step 2: WgR_ShisetsuKensaku (施設検索ページ)
+  ↓ 全施設選択 + 次へ進む
+Step 3: WgR_ShisetsubetsuAkiJoukyou (施設別空き状況ページ) ★重要★
+  ↓ 日付選択 + 次へ進む
+Step 4: WgR_JikantaibetsuAkiJoukyou (時間帯別空き状況ページ)
+  ↓ 空き状況を取得
 ```
 
-### selectDateAndNavigate(page, date)
+### セレクタ一覧（検証済み）
 
-**目的**: カレンダーから日付を選択して空き状況ページに遷移
+#### Step 2: 施設検索ページ
+| 要素 | セレクタ | 備考 |
+|------|---------|------|
+| 施設チェックボックス | `.shisetsu input[type="checkbox"][name="checkShisetsu"]` | 全施設 |
+| 施設ラベル | `label[for="checkShisetsu${facilityId}"]` | label.click()を使用 |
+| 次へ進むボタン | `.navbar .next > a` | ページ遷移 |
 
-**処理フロー**:
-1. カレンダーUIで指定日付を探す
-2. 日付をクリック
-3. 空き状況ページへの遷移を待機
+#### Step 3: 施設別空き状況ページ
+| 要素 | セレクタ | 備考 |
+|------|---------|------|
+| カレンダー（全施設分） | `.item .calendar` | 施設数分のカレンダー |
+| 施設名 | `.item h3` | 施設名表示 |
+| 日付チェックボックス | `input[type="checkbox"][name="checkdate"]` | 全日付 |
+| 日付ラベル | `label[for="${checkboxId}"]` | ○△×－休 |
+| 次へ進むボタン | `.navbar .next > a` | ページ遷移 |
 
-**実装詳細**:
-```typescript
-private async selectDateAndNavigate(page: Page, date: Date): Promise<void> {
-  const targetDate = format(date, 'yyyy-MM-dd'); // 例: "2025-12-11"
-
-  const navigationPromise = page.waitForNavigation({
-    waitUntil: 'networkidle0',
-    timeout: 10000
-  });
-
-  // カレンダーから日付を選択（セレクタは要調査）
-  await page.evaluate((dateStr) => {
-    const dateCell = document.querySelector(`td[data-date="${dateStr}"]`);
-    if (dateCell) {
-      (dateCell as HTMLElement).click();
-    }
-  }, targetDate);
-
-  await navigationPromise;
-}
+**日付valueフォーマット:**
+```
+value="2025121100701   0"
+      ^^^^^^^^ ^^^^^ ^^^
+      日付     施設  不明
+      YYYYMMDD コード
 ```
 
-### scrapeAvailability(page, date)
+**空き状況ラベル:**
+- `○`: 空きあり → 選択する
+- `△`: 一部空き → 選択する
+- `－`: 当日など → **選択する**（当日の場合に表示されるが、選択可能で空き状況が見られる）
+- `×`: 空きなし → 選択しない
+- `休`: 休館日 → disabled（選択不可）
 
-**目的**: 空き状況ページから時間帯データを取得
+#### Step 4: 時間帯別空き状況ページ
 
-**処理フロー**:
-1. 時間帯テーブルを探す
-2. 各行から時間帯と空き状況を抽出
-3. TimeSlot型に変換
+**重要な構造: 各カレンダーテーブルは1つの日付を表す**
 
-**実装詳細**:
+当初の想定（複数日付が横に並ぶ）とは異なり、**各`.calendar`テーブルは1つの日付の時間帯データを表示**します。
+
+| 要素 | セレクタ | 備考 |
+|------|---------|------|
+| カレンダー（全施設分） | `.item .calendar` | 施設ごと×日付ごとにテーブルが存在 |
+| 日付ヘッダー | `.calendar thead th.shisetsu` | "2025年12月11日(水)" 形式 |
+| 施設名 | `.item h3` | 施設名表示 |
+| コート行 | `.calendar tbody tr` | 各コート（全面、倉庫側等） |
+| コート名 | `.calendar tbody tr td:first-child` | コート名 |
+| 時間帯ヘッダー | `.calendar thead th` (3列目以降) | "8:30～9:00" 形式 |
+| 時間帯セル | `.calendar tbody tr td label` | ○（空き）、×（空いていない） |
+
+**HTML構造の例:**
+```html
+<div class="item">
+  <h3>宇美町立体育館</h3>
+
+  <!-- 12/11のカレンダー -->
+  <table class="calendar">
+    <thead>
+      <tr>
+        <th class="shisetsu">2025年12月11日(水)</th>
+        <th>定員</th>
+        <th>8:30～9:00</th>
+        <th>9:00～9:30</th>
+        <!-- ... -->
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>全面</td>
+        <td>50</td>
+        <td><label>○</label></td>
+        <td><label>×</label></td>
+        <!-- ... -->
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- 12/12のカレンダー（別テーブル） -->
+  <table class="calendar">
+    <thead>
+      <tr>
+        <th class="shisetsu">2025年12月12日(木)</th>
+        <!-- ... -->
+      </tr>
+    </thead>
+    <!-- ... -->
+  </table>
+</div>
+```
+
+**パースロジック:**
+1. 各`.calendar`テーブルをループ
+2. `th.shisetsu`から日付を正規表現で抽出: `/(\d{4})年(\d{1,2})月(\d{1,2})日/`
+3. 日付が対象日付に含まれるかチェック
+4. 時間帯ヘッダー（3列目以降の`th`）から時刻を取得: "8:30～9:00" → "8:30-9:00"
+5. 各コート行の該当セルから空き状況（○/×）を取得
+
+### 実装上の重要ポイント
+
+#### 1. チェックボックス選択は必ずlabel.click()
+
 ```typescript
-private async scrapeAvailability(page: Page, date: Date): Promise<TimeSlot[]> {
-  const slots = await page.evaluate(() => {
-    const rows = Array.from(document.querySelectorAll('.timeslot-table tbody tr'));
+// ❌ 動作しない方法
+checkbox.checked = true;
+checkbox.click();
 
-    return rows.map(row => {
-      const timeCell = row.querySelector('.time');
-      const statusCell = row.querySelector('.status');
+// ✅ 動作する方法
+const label = document.querySelector(`label[for="${checkbox.id}"]`);
+label.click();
+```
 
-      const time = timeCell?.textContent?.trim() || '';
-      const statusText = statusCell?.textContent?.trim() || '';
+**理由**: チェックボックスのイベントハンドラーが `.checked` プロパティを強制的に `false` に戻すため
 
-      // ○=空き、△=一部空き、×=空いていない、-=対象外
-      const available = statusText === '○' || statusText === '△';
+#### 2. 日付選択ロジック（日付ごとループ処理対応）
 
-      return { time, available };
+**重要**: 施設 × 日付の組み合わせが10個までの制限があるため、日付ごとにループして処理します。
+
+```typescript
+// 全体フロー: 日付ごとにループ
+for (let i = 0; i < dates.length; i++) {
+  const currentDate = dates[i];
+
+  // 1. 既存の選択をクリア（戻るボタンで戻った場合に前回の選択が残っているため）
+  await page.evaluate(() => {
+    const checkboxes = Array.from(
+      document.querySelectorAll('input[type="checkbox"][name="checkdate"]')
+    ) as HTMLInputElement[];
+
+    checkboxes.forEach((checkbox) => {
+      if (checkbox.checked) {
+        const label = document.querySelector(
+          `label[for="${checkbox.id}"]`
+        ) as HTMLElement;
+        if (label) {
+          label.click();
+        }
+      }
     });
   });
 
-  return slots;
+  // 2. 日付を選択
+  await selectDatesOnFacilityCalendar(page, [currentDate]);
+
+  // 3. データ取得
+  const results = await scrapeTimeSlots(page, [currentDate]);
+  allResults.push(...results);
+
+  // 4. 最後以外は戻るボタンで施設別空き状況ページへ戻る
+  if (i < dates.length - 1) {
+    await goBackToFacilityCalendar(page);
+  }
 }
-```
 
-### navigateBack(page)
+// 日付選択メソッド
+private async selectDatesOnFacilityCalendar(page: Page, dates: Date[]): Promise<void> {
+  // YYYYMMDD形式に変換
+  const dateStrings = dates.map(date => format(date, 'yyyyMMdd'));
 
-**目的**: ブラウザの戻る操作
+  await page.evaluate((dateStrings) => {
+    const checkboxes = document.querySelectorAll('input[name="checkdate"]');
 
-**実装詳細**:
-```typescript
-private async navigateBack(page: Page): Promise<void> {
+    checkboxes.forEach(checkbox => {
+      // valueの最初の8文字が日付
+      const checkboxDate = checkbox.value.substring(0, 8);
+
+      if (dateStrings.includes(checkboxDate)) {
+        const label = document.querySelector(`label[for="${checkbox.id}"]`);
+        const status = label?.textContent?.trim();
+
+        // ○、△、－を選択（空きあり、一部空き、当日など）
+        // 注: －は当日の場合に表示されるが、選択可能で空き状況が見られる
+        if (status === '○' || status === '△' || status === '－') {
+          // チェックボックスが選択されていない場合のみクリック
+          if (!checkbox.checked) {
+            label.click();
+          }
+        }
+      }
+    });
+  }, dateStrings);
+}
+
+// 戻るボタンで施設別空き状況ページへ戻る
+private async goBackToFacilityCalendar(page: Page): Promise<void> {
+  // ページ内の「前に戻る」ボタンをクリック（ブラウザバックではない）
   await Promise.all([
     page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 10000 }),
-    page.goBack()
+    page.click('.navbar .prev > a'),
   ]);
+
+  // 施設別空き状況ページ (WgR_ShisetsubetsuAkiJoukyou) に戻ったことを確認
+  const currentUrl = page.url();
+  if (!currentUrl.includes('WgR_ShisetsubetsuAkiJoukyou')) {
+    throw new Error(`予期しないページに遷移しました: ${currentUrl}`);
+  }
 }
 ```
 
-### Phase 2実装の注意点
+#### 3. 制約事項
 
-1. **HTML構造の調査**: 実際のページをスクレイピングして正確なセレクタを特定する必要があります
-   - 日付選択ページのカレンダーUI構造
-   - 空き状況ページの時間帯テーブル構造
-   - 「次へ進む」ボタンのセレクタ
+- **施設 × 日付の組み合わせが10個まで** (システム制約)
+  - 施設が10個ある場合、1回につき1日分しか選択できない
+  - 複数日を取得する場合は、日付ごとにループして処理する必要がある
+- **最大7日まで選択可能** (本システムの制限)
+  - スクレイピング対象システムは最大10日まで選択可能
+  - 本システムでは7日間に制限し、システムへの負荷を軽減
+- **施設は全選択が前提** (個別選択は今後の改善案)
+- **戻るボタンはページ内ボタンを使用**
+  - ブラウザバック（`page.goBack()`）ではエラーになる
+  - 必ずページ内の「前に戻る」ボタン（`.navbar .prev > a`）を使用すること
+- **既存の選択をクリアする必要がある**
+  - 戻るボタンで施設別空き状況ページに戻った際、前回の日付選択が残っている
+  - 新しい日付を選択する前に、必ず既存の選択をクリアすること
 
-2. **複数日・複数施設の処理**: ループ処理で各組み合わせをスクレイピング
-   - 施設数 × 日付数 のページ遷移が発生
-   - タイムアウトに注意（全体で30秒）
+#### 4. 日付のタイムゾーン問題に注意 ⚠️
 
-3. **エラーハンドリング**: 各ステップでのエラーハンドリングを実装
-   - ページ遷移失敗
-   - 要素が見つからない
-   - タイムアウト
+JavaScriptの`Date.toISOString()`はUTC時刻を返すため、日本時間（UTC+9）で日付が1日ずれる問題が発生します。
+
+**必ず`date-fns`の`format(date, 'yyyy-MM-dd')`を使用すること:**
+
+```typescript
+// ❌ NG: UTC変換により日付がずれる
+const dateStr = date.toISOString().split('T')[0];
+// 2025-12-11 00:00:00 JST → 2025-12-10 15:00:00 UTC → "2025-12-10"
+
+// ✅ OK: ローカルタイムで正しい日付
+import { format } from 'date-fns';
+const dateStr = format(date, 'yyyy-MM-dd');
+// 2025-12-11 00:00:00 JST → "2025-12-11"
+```
+
+**影響範囲:**
+- フロントエンド → API のリクエスト時 (src/app/page.tsx:39)
+- スクレイピング時の日付フォーマット (src/lib/scraper/index.ts)
+
+### エラーハンドリング
+
+```typescript
+// ダイアログの自動受け入れ
+page.on('dialog', async dialog => {
+  console.log('ダイアログ:', dialog.message());
+  await dialog.accept();
+});
+
+// タイムアウト処理
+try {
+  await page.waitForNavigation({
+    waitUntil: 'networkidle0',
+    timeout: 10000
+  });
+} catch (error) {
+  throw new Error(`ページ遷移タイムアウト: ${error.message}`);
+}
+```
+
+### 関連ドキュメント
+
+詳細な調査結果は以下のドキュメントを参照:
+- `investigation/complete-flow-analysis.md` - 完全なフロー調査結果
+- `investigation/INVESTIGATION_SUMMARY.md` - 調査結果サマリー
+- `../../../docs/design/scraping-flow-design.md` - スクレイピングフロー設計書（詳細版）
+- `../../../docs/tasks/implementation-tasks.md` - 実装タスク一覧（5フェーズ）
 
 ## まとめ
 
@@ -1351,6 +1555,21 @@ private async navigateBack(page: Page): Promise<void> {
 4. TDDアプローチによるユニットテスト
 5. モバイルファーストのレスポンシブデザイン
 
+**Phase 2実装完了 (2025-12-06):**
+- ✅ 4ステップの完全なスクレイピングフロー実装
+- ✅ 施設別空き状況ページ（Step 3）の発見と実装
+- ✅ label.click()パターンの適用
+- ✅ 日付選択ロジックの実装
+- ✅ 時間帯別空き状況の一括取得
+
+**重要な技術的発見:**
+- チェックボックス選択は `label.click()` が必須
+- 日付valueフォーマット: `YYYYMMDD` + 施設コード
+- 空き状況ラベル（○△×－休）による選択フィルタリング
+- 最大10日まで選択可能（システム制約）
+
 **次のステップ:**
-- tasks.mdでの実装タスクへの分解
-- TDDアプローチでの実装開始
+- ✅ Phase 2実装完了
+- 統合テストの実施
+- パフォーマンス最適化
+- エラーハンドリングの強化

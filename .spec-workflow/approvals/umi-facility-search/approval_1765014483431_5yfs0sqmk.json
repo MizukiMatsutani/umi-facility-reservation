@@ -3,8 +3,10 @@
   "title": "要件定義書の更新 - Phase 2を必須機能として明確化",
   "filePath": ".spec-workflow/specs/umi-facility-search/requirements.md",
   "type": "document",
-  "status": "pending",
+  "status": "approved",
   "createdAt": "2025-12-06T09:48:03.432Z",
   "category": "spec",
-  "categoryName": "umi-facility-search"
+  "categoryName": "umi-facility-search",
+  "response": "ダッシュボードから承認",
+  "respondedAt": "2025-12-06T13:49:40.051Z"
 }

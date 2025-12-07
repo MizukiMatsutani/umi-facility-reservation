@@ -232,84 +232,146 @@
   - _要件: 要件3（スクレイピング）_
   - _プロンプト: Role: Senior Backend Developer with expertise in workflow orchestration and error handling | Task: Implement scrapeFacilities method that orchestrates full scraping flow (init browser → navigate → select sports → get facilities → scrape availability for each → cleanup), with comprehensive error handling and try-finally cleanup | Restrictions: Must ensure browser cleanup in finally block, handle errors at each step, return FacilityAvailability[], implement within 10-second timeout goal, log progress for debugging | Success: Full scraping flow works end-to-end, proper cleanup always executes, comprehensive error handling, returns correct data structure_
 
-### 3.5 Phase 2: 完全なスクレイピングフローの実装
+### 3.5 Phase 2: 完全なスクレイピングフローの実装調査（✅ 2025-12-06完了）
 
-- [-] 3.5.1 HTMLセレクタの調査と文書化
-  - ファイル: docs/investigation/phase2-selectors.md
+**ステータス**: ✅ 調査完了 / ✅ 実装完了
+
+**概要**: 調査により正しい4ステップフローを発見し、実装も完了しました。
+
+**調査成果**:
+- 4ステップフローの発見（検索→施設選択→日付選択→空き状況取得）
+- label.click()パターンの発見
+- 日付valueフォーマットの解明（YYYYMMDD + 施設コード）
+- 空き状況フィルタリングルールの発見（○△のみ選択）
+
+**実装状況**:
+- ✅ 現在のコードは新フロー（全施設選択 → 全日付選択 → 一括取得）に更新済み
+- ✅ `selectAllFacilitiesAndNavigate()` 実装完了
+- ✅ `selectDatesOnFacilityCalendar()` 実装完了
+- ✅ `scrapeTimeSlots()` 実装完了
+- ✅ `scrapeFacilities()` は新フローに改修済み
+
+- [x] 3.5.1 HTMLセレクタの調査と文書化（✅ 完了）
+  - ファイル: docs/investigation/complete-flow-analysis.md, docs/design/scraping-flow-design.md
   - 日付選択ページのHTML構造調査
   - 空き状況ページのHTML構造調査
   - 各ページの必要なセレクタを文書化
   - 目的: Phase 2実装のための技術調査
   - _活用: Puppeteer, 宇美町施設予約システム_
   - _要件: 要件3（スクレイピング - Phase 2）_
-  - _プロンプト: Role: Web Scraping Engineer with expertise in HTML structure analysis and Puppeteer selectors | Task: Investigate HTML structure of date selection page and availability page from 宇美町システム, identify correct selectors for calendar date cells (data-date attribute or similar), next/search buttons, and time slot table elements, document findings in phase2-selectors.md with example HTML snippets | Restrictions: Must manually navigate through actual site to capture HTML, test selectors in browser DevTools, document both successful and failed selector attempts, note any dynamic content or AJAX calls, verify selectors are stable (not auto-generated IDs) | Success: Document created with comprehensive selector information, example HTML snippets included for each page, all necessary selectors identified and tested, notes on dynamic behavior documented_
 
-- [-] 3.5.2 施設選択とナビゲーションメソッドの実装
-  - ファイル: src/lib/scraper/index.ts（継続）
-  - selectFacilityAndNavigate メソッド実装
-  - 施設チェックボックスの選択処理
-  - 「次へ進む」ボタンのクリック処理
-  - 目的: 施設一覧ページから日付選択ページへの遷移
-  - _活用: design.md（selectFacilityAndNavigate設計）, docs/investigation/phase2-selectors.md_
-  - _要件: 要件3（スクレイピング - Phase 2）_
-  - _プロンプト: Role: Web Scraping Developer with expertise in form interaction and page navigation | Task: Implement selectFacilityAndNavigate method using facility.id to check facility checkbox via page.evaluate(), click "次へ進む" button with waitForNavigation (10 second timeout, networkidle0), handle navigation errors and timeouts, following design.md specifications | Restrictions: Must use page.evaluate() to set checkbox.checked = true, set up waitForNavigation BEFORE clicking button, use 10 second timeout, handle dialog auto-accept (already implemented), verify page URL changed after navigation, throw descriptive error if navigation fails | Success: Method successfully selects facility and navigates to date selection page, navigation completes within timeout, proper error handling for failed navigation, URL verification works_
+- [x] 3.5.2 施設選択とナビゲーションメソッドの実装（✅ 完了）
+  - ファイル: src/lib/scraper/index.ts
+  - **実装済み**: 全施設一括選択方式への変更
+  - `selectAllFacilitiesAndNavigate()` メソッドの新規実装
+  - 全施設チェックボックスを `label.click()` で選択
+  - 「次へ進む」ボタン（`.navbar .next > a`）をクリック
+  - 目的: 施設検索ページから施設別空き状況ページへの遷移
+  - **重要**: `checkbox.checked = true` は動作しない
 
-- [-] 3.5.3 日付選択とナビゲーションメソッドの実装
-  - ファイル: src/lib/scraper/index.ts（継続）
-  - selectDateAndNavigate メソッド実装
-  - カレンダーUI操作（日付クリック）
-  - 空き状況ページへの遷移
-  - 目的: 日付選択ページから空き状況ページへの遷移
-  - _活用: design.md（selectDateAndNavigate設計）, date-fns, docs/investigation/phase2-selectors.md_
-  - _要件: 要件3（スクレイピング - Phase 2）_
-  - _プロンプト: Role: Web Scraping Developer with expertise in calendar UI interaction | Task: Implement selectDateAndNavigate method using date-fns format() to convert Date to selector format (e.g., yyyy-MM-dd or MM/dd), click calendar date cell via page.evaluate(), wait for navigation to availability page (10 second timeout, networkidle0), handle calendar interaction errors, following design.md specifications | Restrictions: Must format date correctly for selector (verify format from investigation), use page.evaluate() for date cell click, set up waitForNavigation before click, use 10 second timeout, handle case where date is unavailable/disabled in calendar, throw descriptive error on failure | Success: Method successfully selects date and navigates to availability page, date formatting works correctly, navigation completes within timeout, handles disabled dates gracefully, proper error handling_
+- [x] 3.5.3 日付選択とナビゲーションメソッドの実装（✅ 完了）
+  - ファイル: src/lib/scraper/index.ts
+  - **実装済み**: 施設別空き状況ページ（Step 3）で日付を選択
+  - `selectDatesOnFacilityCalendar()` メソッドの新規実装
+  - 日付valueの最初の8文字（YYYYMMDD）でマッチング
+  - ○または△のみ選択（空きあり、一部空き）
+  - 最大10日まで選択可能
+  - 目的: 施設別空き状況ページから時間帯別空き状況ページへの遷移
 
-- [-] 3.5.4 空き状況データ取得メソッドの実装
-  - ファイル: src/lib/scraper/index.ts（継続）
-  - scrapeAvailabilityFromPage メソッド実装
-  - 時間帯テーブルのパース処理
-  - TimeSlot配列への変換
-  - 目的: 空き状況ページからの詳細データ取得
-  - _活用: design.md（scrapeAvailability設計）, docs/investigation/phase2-selectors.md_
-  - _要件: 要件3（スクレイピング - Phase 2）_
-  - _プロンプト: Role: Web Scraping Developer with expertise in table parsing and data extraction | Task: Implement scrapeAvailabilityFromPage method using page.evaluate() to extract time slot table rows, parse time cells and status cells (○=空き, △=一部空き, ×=空いていない, -=対象外), convert to TimeSlot[] format ({time: string, available: boolean}), handle missing or malformed table data gracefully | Restrictions: Must extract data via page.evaluate() for performance, correctly interpret status symbols (○/△ = available true, ×/- = available false), parse time format to HH:mm string, handle empty tables (return empty array), throw descriptive error if table structure changed significantly | Success: Method extracts time slots correctly from availability page, status symbols interpreted correctly, TimeSlot format correct, handles edge cases (empty table, missing cells), proper error handling_
+- [x] 3.5.4 空き状況データ取得メソッドの実装（✅ 完了）
+  - ファイル: src/lib/scraper/index.ts
+  - **実装済み**: 時間帯別空き状況ページ（Step 4）から全施設の空き状況を一括取得
+  - `scrapeTimeSlots()` メソッドの新規実装
+  - 各施設のカレンダーテーブル（`.item .calendar`）をパース
+  - コートごとの時間帯データ抽出
+  - 時刻計算ロジック（8:30開始、30分刻み）
+  - 目的: 時間帯別空き状況の完全取得
 
-- [-] 3.5.5 戻るナビゲーションメソッドの実装
-  - ファイル: src/lib/scraper/index.ts（継続）
-  - navigateBack メソッド実装
-  - ブラウザ履歴のback処理
-  - ページ遷移の待機
-  - 目的: 日付選択ページへの復帰（複数日検索対応）
-  - _活用: design.md（navigateBack設計）_
-  - _要件: 要件3（スクレイピング - Phase 2）_
-  - _プロンプト: Role: Web Scraping Developer with expertise in browser navigation management | Task: Implement navigateBack method using page.goBack() with Promise.all pattern (waitForNavigation + goBack), 10 second timeout, networkidle0 wait strategy, handle back navigation errors, following design.md specifications | Restrictions: Must use Promise.all([waitForNavigation, goBack()]) pattern, use 10 second timeout, verify page URL changed after back navigation, handle case where back navigation fails (no history), throw descriptive error on timeout | Success: Method successfully navigates back to previous page, navigation completes within timeout, proper error handling for failed back navigation, URL verification works_
+- [x] 3.5.5 戻るナビゲーションメソッドの調査（✅ 不要と判明）
+  - **結論**: 新しい4ステップフローでは戻る操作は不要
+  - 全施設選択 → 全日付選択 → 一括で空き状況取得
+  - navigateBackメソッドは実装不要
 
-- [-] 3.5.6 Phase 2フロー統合（scrapeAvailabilityメソッドの書き換え）
-  - ファイル: src/lib/scraper/index.ts（継続）
-  - scrapeAvailability メソッドの完全書き換え
-  - Phase 2メソッドの統合オーケストレーション
-  - 複数日対応のループ処理
-  - 目的: 完全な日付選択→空き状況取得フローの実装
-  - _活用: selectFacilityAndNavigate, selectDateAndNavigate, scrapeAvailabilityFromPage, navigateBack_
-  - _要件: 要件3（スクレイピング - Phase 2）, 要件1（複数日検索）_
-  - _プロンプト: Role: Senior Backend Developer with expertise in complex workflow orchestration | Task: Rewrite scrapeAvailability method to orchestrate Phase 2 flow: call selectFacilityAndNavigate (once), then for each date in dates[] array: call selectDateAndNavigate, scrapeAvailabilityFromPage, apply timeRange filtering if provided, navigateBack (except last date), return AvailabilityData[] with all dates, handle errors at each step | Restrictions: Must call selectFacilityAndNavigate only once before date loop, loop through all dates[], call navigateBack between dates (not after last date), apply timeRange filtering using existing filterTimeSlots utility, handle partial failures (log and continue to next date), maintain timeout budget (30 seconds total), return AvailabilityData[] matching type signature | Success: Method orchestrates full Phase 2 flow correctly, multiple dates processed successfully, navigates back between dates, applies time filtering, handles errors gracefully (continues on non-fatal errors), returns correct AvailabilityData structure, stays within timeout budget_
+- [x] 3.5.6 scrapeFacilitiesメソッドの全面改修（✅ 完了）
+  - ファイル: src/lib/scraper/index.ts
+  - **実装済み**: 正しい4ステップフローへの全面改修
+  - Step 1: navigateToSearchPage + selectSports + searchFacilities
+  - Step 2: selectAllFacilitiesAndNavigate (新規)
+  - Step 3: selectDatesOnFacilityCalendar (新規)
+  - Step 4: scrapeTimeSlots (新規)
+  - 目的: 完全なスクレイピングフローの統合実行
+  - **実装済み**: 正しい4ステップフローに改修完了
 
-- [-] 3.5.7 Phase 2フローの統合テスト
-  - ファイル: src/lib/scraper/__tests__/phase2-integration.test.ts
-  - Phase 2フロー全体の統合テスト作成
-  - 複数日、時間範囲フィルタのテストケース
+- [x] 3.5.7 Phase 2フローの統合テスト（✅ 完了）
+  - ファイル: scripts/test-phase2-flow.ts など
+  - Phase 2フロー全体の動作確認
+  - 複数日、空き状況フィルタリングのテスト
   - 目的: Phase 2実装の品質保証
-  - _要件: 要件3（スクレイピング - Phase 2）_
-  - _プロンプト: Role: QA Engineer with expertise in integration testing and Puppeteer mocking | Task: Create integration test for Phase 2 scraping flow, mocking Puppeteer page methods (navigate, evaluate, goBack), testing single date scenario, multiple dates scenario (2-3 dates), time range filtering scenario, error scenarios (navigation timeout, missing table), verifying correct method call sequences and return data structure | Restrictions: Must mock Puppeteer completely for test speed, verify selectFacilityAndNavigate called once, selectDateAndNavigate called per date, navigateBack called between dates only, verify AvailabilityData[] structure correct, test with realistic time slot data, test error handling (continue on error) | Success: Integration tests pass, all scenarios covered (single date, multiple dates, filtering, errors), mocking is realistic and maintainable, test execution is fast (<5 seconds total), validates Phase 2 flow correctness_
 
-- [-] 3.5.8 scrapeFacilitiesメソッドの更新（Phase 2対応）
-  - ファイル: src/lib/scraper/index.ts（継続）
-  - scrapeFacilities メソッドの更新
-  - 各施設ごとのscrapeAvailability呼び出し処理の修正
-  - 目的: Phase 2完全実装後のオーケストレーション修正
-  - _活用: 新しいscrapeAvailability（Phase 2版）_
+### 3.6 Phase 2実装タスク（🆕 追加 - 2025-12-06）
+
+**ステータス**: ✅ 完了
+
+**概要**: 調査結果に基づいた実際のコード実装を行いました。
+
+- [x] 3.6.1 selectAllFacilitiesAndNavigate メソッドの実装
+  - ファイル: src/lib/scraper/index.ts
+  - 全施設チェックボックスを label.click() で選択
+  - 「次へ進む」ボタンをクリックして施設別空き状況ページへ遷移
+  - 目的: 施設検索ページ（Step 2）から施設別空き状況ページ（Step 3）への遷移
+  - _活用: docs/design/scraping-flow-design.md (Step 2), docs/investigation/complete-flow-analysis.md_
   - _要件: 要件3（スクレイピング - Phase 2）_
-  - _プロンプト: Role: Senior Backend Developer with expertise in refactoring and workflow optimization | Task: Update scrapeFacilities method to work with Phase 2 scrapeAvailability implementation, ensuring each facility's availability is scraped sequentially (not in parallel to avoid conflicts), managing browser state between facilities (navigate back to facility list if needed), maintaining timeout budget (30 seconds total for all facilities), proper error handling per facility | Restrictions: Must call scrapeAvailability for each facility sequentially (avoid parallel execution conflicts), manage page state between facilities (may need to navigate back to facility list page after each facility), maintain 30 second total timeout, handle partial failures (log error, continue to next facility), ensure browser cleanup in finally block, return FacilityAvailability[] with all successfully scraped facilities | Success: Method works correctly with Phase 2 scrapeAvailability, facilities scraped sequentially without conflicts, page state managed correctly between facilities, timeout budget maintained, partial failures handled gracefully, browser cleanup always executes, returns correct data structure_
+  - _プロンプト: Role: Web Scraping Developer with expertise in Puppeteer and DOM manipulation | Task: Implement selectAllFacilitiesAndNavigate method that selects all facility checkboxes using label.click() pattern (NOT checkbox.checked = true), waits for DOM updates, clicks "次へ進む" button (.navbar .next > a), and waits for navigation to facility calendar page | Restrictions: Must use label.click() for checkbox selection (checkbox.checked does not work), wait 500ms after clicking for DOM update, verify selection state before proceeding, use 10-second navigation timeout, handle cases where no facilities are available | Success: All facilities selected correctly, navigation succeeds to WgR_ShisetsubetsuAkiJoukyou page, selection verified before proceeding, error handling for missing elements works_
+
+- [x] 3.6.2 selectDatesOnFacilityCalendar メソッドの実装
+  - ファイル: src/lib/scraper/index.ts
+  - 施設別空き状況ページで対象日付のチェックボックスを選択
+  - 日付valueの最初の8文字（YYYYMMDD）でマッチング
+  - ○（空きあり）または△（一部空き）のみ選択
+  - 目的: 施設別空き状況ページ（Step 3）で日付を選択し、時間帯別空き状況ページ（Step 4）へ遷移
+  - _活用: docs/design/scraping-flow-design.md (Step 3), date-fns (format関数)_
+  - _要件: 要件3（スクレイピング - Phase 2）_
+  - _プロンプト: Role: Web Scraping Developer with expertise in date handling and DOM manipulation | Task: Implement selectDatesOnFacilityCalendar method that converts Date[] to YYYYMMDD format using date-fns, selects matching date checkboxes (input[name="checkdate"]) where value starts with target date AND label shows ○ or △, validates max 10 dates selected, clicks "次へ進む" button, and waits for navigation to time slot page | Restrictions: Must use date-fns format(date, 'yyyyMMdd'), extract first 8 chars of checkbox.value for date matching, only select dates with ○ or △ status (skip ×, －, 休), enforce 10-date maximum limit, use label.click() pattern, handle navigation with 10-second timeout | Success: Correct dates selected based on YYYYMMDD matching, only available dates (○/△) selected, max 10-date validation works, navigation succeeds to WgR_JikantaibetsuAkiJoukyou page, handles cases where dates are unavailable_
+
+- [x] 3.6.3 scrapeTimeSlots メソッドの実装
+  - ファイル: src/lib/scraper/index.ts
+  - 時間帯別空き状況ページから全施設の空き状況を一括取得
+  - 各施設のカレンダーテーブル（.item .calendar）をパース
+  - コートごとの時間帯データ抽出（8:30開始、30分刻み）
+  - 目的: 時間帯別空き状況ページ（Step 4）から全施設・全日付の空き状況データを取得
+  - _活用: docs/design/scraping-flow-design.md (Step 4), src/lib/types/index.ts (FacilityAvailability型)_
+  - _要件: 要件3（スクレイピング - Phase 2）_
+  - _プロンプト: Role: Web Scraping Developer with expertise in complex DOM parsing and data extraction | Task: Implement scrapeTimeSlots method that extracts all facility availability data from time slot page by iterating .item .calendar elements, parsing facility name from h3, extracting court names from .shisetsu cells, parsing time slot labels (○ for available, × for unavailable), calculating time ranges (starting 8:30, 30-min increments), and returning FacilityAvailability[] with proper date grouping | Restrictions: Must parse all facilities in single page load, extract facility names from h3 within .item, get court names from tr .shisetsu cells, calculate time slots correctly (8:30-9:00, 9:00-9:30, etc.), map ○ to available: true and other statuses to available: false, return properly typed FacilityAvailability[], handle missing or malformed calendar elements | Success: All facilities parsed correctly, court names extracted properly, time slot calculation accurate (8:30 start, 30-min increments), availability status correctly mapped, returns valid FacilityAvailability[], handles edge cases (missing elements, changed structure)_
+
+- [x] 3.6.4 scrapeFacilities メソッドの全面改修
+  - ファイル: src/lib/scraper/index.ts
+  - 4ステップフローへの完全な書き換え
+  - 旧フロー（施設ごと→日付ごとループ）を削除
+  - 新フロー（全施設→全日付→一括取得）に変更
+  - 目的: スクレイピングフロー全体のオーケストレーション完成
+  - _活用: docs/design/scraping-flow-design.md, 3.6.1-3.6.3で実装した新メソッド_
+  - _要件: 要件3（スクレイピング）_
+  - _プロンプト: Role: Senior Backend Developer with expertise in workflow orchestration and refactoring | Task: Completely rewrite scrapeFacilities method to implement 4-step flow (Step 1: navigate + select sports + search → Step 2: selectAllFacilitiesAndNavigate → Step 3: selectDatesOnFacilityCalendar → Step 4: scrapeTimeSlots), removing old facility/date loops, adding dialog handler (auto-accept), implementing optional TimeRange filtering on results, and ensuring browser cleanup in finally block | Restrictions: Must remove all old loop-based logic (no facility loop, no date loop), use new methods from 3.6.1-3.6.3, maintain dialog auto-accept handler, apply TimeRange filter only if provided, ensure browser cleanup in finally block, log progress at each step, handle errors gracefully without breaking cleanup | Success: Old loop logic completely removed, 4-step flow implemented correctly, all new methods integrated, dialog handler works, TimeRange filtering optional and correct, browser always cleaned up, comprehensive error handling, progress logging clear_
+
+- [x] 3.6.5 統合テストスクリプトの作成
+  - ファイル: scripts/test-phase2-flow.ts
+  - 新しい4ステップフローの動作確認スクリプト
+  - 1日、複数日、時間範囲フィルタリングのテストケース
+  - 目的: Phase 2実装の動作確認とデバッグ支援
+  - _活用: src/lib/scraper/index.ts (FacilityScraper)_
+  - _要件: 要件3（スクレイピング - Phase 2）_
+  - _プロンプト: Role: QA Engineer with expertise in integration testing and debugging | Task: Create test-phase2-flow.ts script that tests new 4-step scraping flow with 3 scenarios: (1) single date search (12/11), (2) multiple dates search (12/11-12/15), (3) time range filtering (9:00-12:00), logging detailed progress and results, saving results to JSON files for inspection | Restrictions: Must use actual FacilityScraper.scrapeFacilities method, test with real dates (not mocked), log each step's progress and timing, save results to test-results/ directory as JSON, include error handling and clear success/failure reporting, use headless: false for visual debugging | Success: Script tests all 3 scenarios successfully, logs are detailed and helpful, results saved to JSON files, errors are caught and reported clearly, visual debugging mode works_
+
+- [x] 3.6.6 既存の不要なメソッドの削除
+  - ファイル: src/lib/scraper/index.ts
+  - `selectFacilityAndNavigate` メソッドの削除（旧フロー用）
+  - `navigateBack` メソッドの削除（不要と判明）
+  - `selectDateAndNavigate` メソッドの削除（旧フロー用）
+  - `scrapeAvailability` メソッドの削除（旧フロー用）
+  - `scrapeAvailabilityFromPage` メソッドの削除（旧フロー用）
+  - 目的: 旧フローの完全削除とコードクリーンアップ
+  - _要件: 非機能要件（メンテナンス性）_
+  - _プロンプト: Role: Code Maintenance Engineer with expertise in refactoring and technical debt reduction | Task: Remove all old flow methods (selectFacilityAndNavigate, navigateBack, selectDateAndNavigate, scrapeAvailability, scrapeAvailabilityFromPage) from FacilityScraper class, verify no remaining references to these methods exist in codebase, update any JSDoc comments referencing old flow, ensure TypeScript compilation succeeds after deletion | Restrictions: Must remove methods completely (not just comment out), search codebase for any references before deleting, verify no broken imports or calls, ensure tests don't reference deleted methods, maintain git history (don't squash this commit) | Success: All old flow methods deleted, no references remain in codebase, TypeScript compiles without errors, tests pass (or are updated), git history preserved, code is cleaner and easier to understand_
 
 ## フェーズ4: APIエンドポイントの実装
 
