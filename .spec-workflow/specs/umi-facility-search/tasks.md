@@ -730,14 +730,20 @@
   - **試行した対策**: リトライロジック、User-Agent変更、タイムアウト延長 → すべて失敗
   - **結論**: Render.comへ移行
 
-- [ ] 10.1.2 Render.com環境のセットアップ
-  - ファイル: N/A（Render.comダッシュボード操作）
-  - Render.comアカウント作成とGitHub連携
-  - Web Serviceの作成（Node.js 20.x）
-  - ビルド・起動コマンドの設定
+- [x] 10.1.2 Render.com環境のセットアップ
+  - ファイル: render.yaml, src/app/api/health/route.ts, docs/deployment/render-deployment-guide.md
+  - Render.com Blueprint設定ファイル（render.yaml）作成
+  - ヘルスチェックエンドポイント（/api/health）作成
+  - デプロイガイドドキュメント作成
   - 目的: Render.comでのホスティング準備
   - _要件: tech.md（デプロイメント - Render.com）_
   - _プロンプト: Role: DevOps Engineer with expertise in Render.com and cloud deployments | Task: Set up Render.com account, connect GitHub repository (umi-facility-reservation), create new Web Service with Node.js 20.x environment, configure build command (pnpm install && pnpm build), configure start command (pnpm start), set environment variables (NODE_ENV=production), select free tier plan (750 hours/month) | Restrictions: Must use free tier plan, configure auto-deploy on main branch push, verify GitHub integration works, ensure all environment variables are set correctly, document Render.com dashboard URL | Success: Render.com account created, GitHub connected, Web Service created and configured, build/start commands set correctly, ready for deployment_
+  - **完了日**: 2025年12月7日
+  - **成果物**:
+    - render.yaml（Blueprint設定）
+    - /api/health（ヘルスチェックエンドポイント）
+    - docs/deployment/render-deployment-guide.md（完全なデプロイガイド）
+    - README.md更新（Render.comへの移行を反映）
 
 - [ ] 10.1.3 Render.com本番デプロイの実行
   - ファイル: N/A（Render.comデプロイ）
