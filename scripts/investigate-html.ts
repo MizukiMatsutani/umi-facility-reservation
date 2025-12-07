@@ -45,9 +45,9 @@ async function investigateHTML() {
       forms.map((form, index) => ({
         index,
         id: form.id,
-        name: form.name,
-        action: form.action,
-        method: form.method,
+        name: (form as HTMLFormElement).name,
+        action: (form as HTMLFormElement).action,
+        method: (form as HTMLFormElement).method,
       }))
     );
     console.log('フォーム:', JSON.stringify(forms, null, 2));

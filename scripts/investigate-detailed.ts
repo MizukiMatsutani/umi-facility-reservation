@@ -71,7 +71,7 @@ async function investigateDetailed() {
         index,
         id: table.id,
         className: table.className,
-        rowCount: table.rows.length,
+        rowCount: (table as HTMLTableElement).rows.length,
       }))
     );
     console.log('テーブル:', JSON.stringify(tables, null, 2));

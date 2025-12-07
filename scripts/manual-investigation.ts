@@ -81,7 +81,7 @@ async function manualInvestigation() {
 
   // URLが変わるまで待機、または最大30秒待つ
   await page.waitForFunction(
-    (oldUrl) => window.location.href !== oldUrl && !window.location.href.includes('#failure'),
+    (oldUrl: string) => window.location.href !== oldUrl && !window.location.href.includes('#failure'),
     { timeout: 30000 },
     currentUrl
   ).catch(() => {
