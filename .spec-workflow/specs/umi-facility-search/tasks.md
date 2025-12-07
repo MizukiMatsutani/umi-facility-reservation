@@ -745,61 +745,36 @@
     - docs/deployment/render-deployment-guide.md（完全なデプロイガイド）
     - README.md更新（Render.comへの移行を反映）
 
-- [x] 10.1.3 Render.com本番デプロイの実行
+- [ ] 10.1.3 Render.com本番デプロイの実行
   - ファイル: N/A（Render.comデプロイ）
   - mainブランチへのpushでデプロイトリガー
   - ビルドログの確認
   - デプロイ成功の確認
   - 目的: Render.comでのアプリケーション公開
   - _要件: tech.md（デプロイメント）_
-  - **完了日**: 2025年12月7日
-  - **結果**: ✅ デプロイ成功
-  - **本番URL**: https://umi-facility-reservation.onrender.com
-  - **デプロイID**: dep-d4qlnb56ubrc73dj2i90（live）
-  - **ビルド時間**: 約2分38秒
-  - **成果**:
-    - ヘルスチェックエンドポイント正常稼働
-    - HTTPS証明書正常
-    - サービスステータス: 稼働中
+  - _プロンプト: Role: DevOps Engineer with expertise in deployment troubleshooting | Task: Trigger deployment by pushing to main branch, monitor build logs for errors (Puppeteer installation, Next.js build), verify deployment succeeds, check service health endpoint, note deployment URL (.onrender.com), verify HTTPS certificate works, create deployment checklist | Restrictions: Must monitor entire build process, troubleshoot any Puppeteer/Chromium installation issues, ensure Next.js build completes, verify service starts correctly, document final production URL | Success: Deployment completes successfully, build logs show no errors, service is running, HTTPS works, production URL accessible_
 
-- [x] 10.1.4 Render.comでのIPブロック問題検証
+- [ ] 10.1.4 Render.comでのIPブロック問題検証
   - ファイル: N/A（手動テスト）
   - Render.com本番環境から宇美町システムへのアクセステスト
   - スクレイピングAPI（/api/scrape）の動作確認
   - 接続タイムアウトの有無確認
   - 目的: Render.comでIPブロック問題が解決されているか検証
   - _要件: 要件3（スクレイピング）_
-  - **完了日**: 2025年12月7日
-  - **結果**: ✅ IPブロック問題完全解決
-  - **検証内容**:
-    - 1日分検索: HTTP 200、56.87秒、8施設取得成功
-    - 3日分検索: HTTP 200、93.45秒、10施設取得成功
-    - 接続タイムアウトエラー: なし（Vercelの問題を完全に回避）
-  - **備考**: 時間範囲フィルタリングの不具合を発見（別途修正が必要）
+  - _プロンプト: Role: QA Engineer with expertise in network debugging and production validation | Task: Test scraping functionality on Render.com production environment, make POST request to /api/scrape with test dates (2025-12-10), monitor response time (should complete within 30 seconds without connection timeout), verify facility data is returned successfully, compare with Vercel failure logs to confirm IP blocking issue is resolved, document test results | Restrictions: Must test with real宇美町システムaccess (not mocked), verify full scraping flow completes, check for net::ERR_CONNECTION_TIMED_OUT errors, test multiple times to ensure consistency, document response times | Success: Scraping completes successfully without connection timeout, facility data returned correctly, no IP blocking errors, confirms Render.com resolves Vercel issue_
 
 ### 10.2 ポストデプロイ検証（Render.com）
 
-- [x] 10.2.1 Render.com本番環境での動作確認
+- [ ] 10.2.1 Render.com本番環境での動作確認
   - ファイル: N/A（手動テスト）
   - すべての機能の動作確認
   - スクレイピングの実際の動作確認
   - エラーハンドリングの確認
   - 目的: Render.com本番環境での品質保証
   - _要件: すべての要件_
-  - **完了日**: 2025年12月7日
-  - **結果**: ✅ 主要機能の動作確認完了
-  - **検証結果**:
-    - ✅ ヘルスチェック: /api/health正常応答
-    - ✅ 1日分スクレイピング: 8施設、56.87秒
-    - ✅ 3日分スクレイピング: 10施設、93.45秒
-    - ✅ IPブロック問題: 完全解決（接続タイムアウトなし）
-    - ⚠️ 時間範囲フィルタリング: 未実装（別途修正必要）
-  - **備考**:
-    - 実スクレイピング動作確認済み
-    - コールドスタート時間: 未測定（要追加検証）
-    - モバイルテスト: 未実施（要追加検証）
+  - _プロンプト: Role: QA Lead with expertise in production validation and smoke testing | Task: Execute comprehensive smoke test on Render.com production environment, test all user scenarios (search with various date/time combinations, view results, error scenarios), verify actual scraping from 宇美町システム works, test on mobile devices, measure cold start time (first request after sleep), document any production-specific issues | Restrictions: Must test on Render.com production URL, verify real scraping works (not mocked), test all error scenarios (invalid input, rate limiting), test on mobile browsers (iOS Safari, Android Chrome), validate Japanese text displays correctly, test cold start behavior | Success: All features work correctly in production, real scraping succeeds without IP blocking, error handling works as expected, mobile testing passes, cold start acceptable (<60s), no production-specific issues found_
 
-- [-] 10.2.2 Render.comパフォーマンスモニタリングの確認
+- [ ] 10.2.2 Render.comパフォーマンスモニタリングの確認
   - ファイル: N/A（モニタリング）
   - Render.comダッシュボードでのログ確認
   - 初期のエラーログ確認
