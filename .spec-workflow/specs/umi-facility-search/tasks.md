@@ -56,11 +56,11 @@
 - [x] 1.3.1 コアデータ型の定義
   - ファイル: src/lib/types/index.ts
   - Facility, AvailabilityData, TimeSlot 型を定義
-  - SearchParams, TimeRange 型を定義
+  - SearchParams 型を定義
   - 目的: 型安全性の確立
   - _活用: design.md（データモデル）_
   - _要件: 要件1（日付と時間帯による検索）, 要件2（検索結果表示）_
-  - _プロンプト: Role: TypeScript Developer specializing in type systems and data modeling | Task: Define core TypeScript interfaces (Facility, AvailabilityData, TimeSlot, SearchParams, TimeRange) following design.md data models with strict type safety | Restrictions: Must use strict TypeScript settings, add JSDoc comments for all types, ensure type compatibility across system, use readonly where appropriate | Success: All data types defined and exported, types compile without errors, comprehensive JSDoc documentation, type safety enforced_
+  - _プロンプト: Role: TypeScript Developer specializing in type systems and data modeling | Task: Define core TypeScript interfaces (Facility, AvailabilityData, TimeSlot, SearchParams) following design.md data models with strict type safety | Restrictions: Must use strict TypeScript settings, add JSDoc comments for all types, ensure type compatibility across system, use readonly where appropriate | Success: All data types defined and exported, types compile without errors, comprehensive JSDoc documentation, type safety enforced_
 
 - [x] 1.3.2 API型の定義
   - ファイル: src/lib/types/api.ts
@@ -97,36 +97,16 @@
 - [x] 2.2.1 バリデーションユーティリティのテスト作成
   - ファイル: src/lib/utils/__tests__/validation.test.ts
   - 検索パラメータバリデーションのテストケース作成
-  - 時間範囲バリデーションのテストケース作成
   - 目的: TDDアプローチでのテスト先行作成
   - _要件: 要件1（日付と時間帯による検索）_
-  - _プロンプト: Role: QA Engineer specializing in input validation and edge case testing | Task: Write unit tests for validation functions including validateSearchParams (empty dates error, past date warning), validateTimeRange (From must be before To), covering all error scenarios | Restrictions: Must test both success and failure cases, validate error messages are user-friendly in Japanese, test boundary conditions | Success: Validation test suite complete, covers all error scenarios from requirement 1, tests fail initially (red phase), clear validation expectations defined_
+  - _プロンプト: Role: QA Engineer specializing in input validation and edge case testing | Task: Write unit tests for validation functions including validateSearchParams (empty dates error, past date warning), covering all error scenarios | Restrictions: Must test both success and failure cases, validate error messages are user-friendly in Japanese, test boundary conditions | Success: Validation test suite complete, covers all error scenarios from requirement 1, tests fail initially (red phase), clear validation expectations defined_
 
 - [x] 2.2.2 バリデーションユーティリティの実装
   - ファイル: src/lib/utils/validation.ts
   - validateSearchParams: 日付配列の検証
-  - validateTimeRange: 時間範囲の検証
   - 目的: 入力データの整合性保証
   - _要件: 要件1（日付と時間帯による検索）, 要件5（エラー表示）_
-  - _プロンプト: Role: Backend Developer with expertise in data validation and error handling | Task: Implement validation utility functions (validateSearchParams, validateTimeRange) to pass all tests from 2.2.1, throwing descriptive Japanese error messages | Restrictions: Must throw typed errors with retryable flag, validate all edge cases, provide clear Japanese error messages, ensure validation is synchronous | Success: All tests from 2.2.1 pass, validation is robust and user-friendly, error messages are clear in Japanese, code is well-documented_
-
-### 2.3 時間範囲フィルタリングの実装
-
-- [x] 2.3.1 時間範囲フィルタリングのテスト作成
-  - ファイル: src/lib/utils/__tests__/timeFilter.test.ts
-  - filterTimeSlots関数のテストケース作成
-  - 時間範囲マッチングのテストケース作成
-  - 目的: TDDアプローチでのテスト先行作成
-  - _要件: 要件1（日付と時間帯による検索）_
-  - _プロンプト: Role: QA Engineer with expertise in time-based filtering logic | Task: Write unit tests for filterTimeSlots function that filters TimeSlot[] based on optional TimeRange (From-To), including no filter (returns all), exact match, partial overlap scenarios | Restrictions: Must test edge cases (midnight, 30-minute increments), verify empty results when no matches, test with undefined TimeRange | Success: Complete test coverage for time filtering, all edge cases covered, tests fail initially, clear filtering expectations_
-
-- [x] 2.3.2 時間範囲フィルタリングの実装
-  - ファイル: src/lib/utils/timeFilter.ts
-  - filterTimeSlots: TimeSlot配列のフィルタリング
-  - isTimeInRange: 時刻が範囲内かチェック
-  - 目的: 時間範囲による検索結果のフィルタリング
-  - _要件: 要件1（日付と時間帯による検索）_
-  - _プロンプト: Role: Backend Developer with expertise in time-based algorithms | Task: Implement time filtering functions (filterTimeSlots, isTimeInRange) to pass all tests from 2.3.1, handling 30-minute increment time slots (8:30-21:30) | Restrictions: Must handle edge cases (midnight boundary), optimize for performance, support undefined TimeRange (no filtering), use consistent time format (HH:mm) | Success: All tests from 2.3.1 pass, filtering logic is accurate and efficient, handles all edge cases, well-documented_
+  - _プロンプト: Role: Backend Developer with expertise in data validation and error handling | Task: Implement validation utility functions (validateSearchParams) to pass all tests from 2.2.1, throwing descriptive Japanese error messages | Restrictions: Must throw typed errors with retryable flag, validate all edge cases, provide clear Japanese error messages, ensure validation is synchronous | Success: All tests from 2.2.1 pass, validation is robust and user-friendly, error messages are clear in Japanese, code is well-documented_
 
 ## フェーズ3: スクレイピング機能の実装
 
@@ -217,11 +197,11 @@
 - [x] 3.4.4 空き状況スクレイピングメソッドの実装
   - ファイル: src/lib/scraper/index.ts（継続）
   - scrapeAvailability メソッド実装
-  - 日付ループと時間範囲フィルタリングの統合
+  - 日付ループの実装
   - 目的: 空き状況データの取得とフィルタリング
   - _活用: parser.ts（parseAvailability関数）, timeFilter.ts（filterTimeSlots関数）_
   - _要件: 要件1（時間帯指定）, 要件3（スクレイピング）_
-  - _プロンプト: Role: Web Scraping Developer with expertise in complex data extraction workflows | Task: Implement scrapeAvailability method that loops through dates, extracts availability HTML, parses with parseAvailability, and filters with filterTimeSlots based on optional TimeRange | Restrictions: Must handle multi-date scraping, integrate time filtering correctly, handle missing data gracefully, maintain scraping efficiency, respect rate limiting | Success: Method extracts availability for all dates, time filtering works correctly, integrates parser and filter functions, handles errors properly_
+  - _プロンプト: Role: Web Scraping Developer with expertise in complex data extraction workflows | Task: Implement scrapeAvailability method that loops through dates, extracts availability HTML, parses with parseAvailability,  | Restrictions: Must handle multi-date scraping, integrate time filtering correctly, handle missing data gracefully, maintain scraping efficiency, respect rate limiting | Success: Method extracts availability for all dates, integrates parser and filter functions, handles errors properly_
 
 - [x] 3.4.5 メインスクレイピングメソッドの実装
   - ファイル: src/lib/scraper/index.ts（継続）
@@ -351,12 +331,12 @@
   - 目的: スクレイピングフロー全体のオーケストレーション完成
   - _活用: docs/design/scraping-flow-design.md, 3.6.1-3.6.3で実装した新メソッド_
   - _要件: 要件3（スクレイピング）_
-  - _プロンプト: Role: Senior Backend Developer with expertise in workflow orchestration and refactoring | Task: Completely rewrite scrapeFacilities method to implement 4-step flow (Step 1: navigate + select sports + search → Step 2: selectAllFacilitiesAndNavigate → Step 3: selectDatesOnFacilityCalendar → Step 4: scrapeTimeSlots), removing old facility/date loops, adding dialog handler (auto-accept), implementing optional TimeRange filtering on results, and ensuring browser cleanup in finally block | Restrictions: Must remove all old loop-based logic (no facility loop, no date loop), use new methods from 3.6.1-3.6.3, maintain dialog auto-accept handler, apply TimeRange filter only if provided, ensure browser cleanup in finally block, log progress at each step, handle errors gracefully without breaking cleanup | Success: Old loop logic completely removed, 4-step flow implemented correctly, all new methods integrated, dialog handler works, TimeRange filtering optional and correct, browser always cleaned up, comprehensive error handling, progress logging clear_
+  - _プロンプト: Role: Senior Backend Developer with expertise in workflow orchestration and refactoring | Task: Completely rewrite scrapeFacilities method to implement 4-step flow (Step 1: navigate + select sports + search → Step 2: selectAllFacilitiesAndNavigate → Step 3: selectDatesOnFacilityCalendar → Step 4: scrapeTimeSlots), removing old facility/date loops, adding dialog handler (auto-accept), and ensuring browser cleanup in finally block | Restrictions: Must remove all old loop-based logic (no facility loop, no date loop), use new methods from 3.6.1-3.6.3, maintain dialog auto-accept handler, ensure browser cleanup in finally block, log progress at each step, handle errors gracefully without breaking cleanup | Success: Old loop logic completely removed, 4-step flow implemented correctly, all new methods integrated, dialog handler works, browser always cleaned up, comprehensive error handling, progress logging clear_
 
 - [x] 3.6.5 統合テストスクリプトの作成
   - ファイル: scripts/test-phase2-flow.ts
   - 新しい4ステップフローの動作確認スクリプト
-  - 1日、複数日、時間範囲フィルタリングのテストケース
+  - 1日、複数日のテストケース
   - 目的: Phase 2実装の動作確認とデバッグ支援
   - _活用: src/lib/scraper/index.ts (FacilityScraper)_
   - _要件: 要件3（スクレイピング - Phase 2）_
@@ -463,14 +443,6 @@
   - _要件: 要件1（クイック日付選択）_
   - _プロンプト: Role: Frontend Developer with expertise in React hooks and date utilities | Task: Create QuickDateSelect component with "本日から1週間" button that generates 7-day Date array using date.ts generateDateRange utility and calls onQuickSelect callback | Restrictions: Must be a client component, use existing generateDateRange utility, style button with 44px+ tap target, use clear Japanese label, integrate with parent form state | Success: Button renders correctly, generates 7-day array on click, callback fires with correct dates, meets tap target size, integrates smoothly_
 
-- [x] 5.2.3 TimePickerコンポーネントの作成
-  - ファイル: src/components/ui/TimePicker.tsx
-  - From-To時刻選択ドロップダウン
-  - バリデーション（Toは Fromより後）
-  - 目的: 時間範囲選択UI提供
-  - _活用: TailwindCSS_
-  - _要件: 要件1（時間帯指定）_
-  - _プロンプト: Role: Frontend Developer with expertise in form inputs and validation | Task: Create TimePicker component with From/To dropdowns (8:30 to 21:30 in 30-min increments), validating To > From, supporting undefined (全時間帯), optimized for mobile touch | Restrictions: Must be a client component, generate time options dynamically (8:30-21:30, 30min steps), validate To is after From, style dropdowns for mobile (large tap target), allow clearing (全時間帯), use controlled component pattern | Success: Dropdowns display correctly, validation works (To > From), supports undefined state, mobile-optimized, validation feedback clear_
 
 - [x] 5.2.4 SearchFormコンポーネントの作成
   - ファイル: src/components/SearchForm.tsx

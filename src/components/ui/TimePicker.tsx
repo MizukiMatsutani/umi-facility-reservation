@@ -9,8 +9,9 @@ interface TimePickerProps {
 }
 
 /**
- * 時間範囲選択コンポーネント
- * From-To形式で時刻を選択でき、未選択時は全時間帯を検索します
+ * 時間範囲選択コンポーネント（非推奨）
+ *
+ * @deprecated この機能は要件から削除されました。このコンポーネントは後方互換性のために残されていますが、使用しないでください。
  */
 export default function TimePicker({ value, onChange }: TimePickerProps) {
   const [fromTime, setFromTime] = useState<string | undefined>(value?.from);

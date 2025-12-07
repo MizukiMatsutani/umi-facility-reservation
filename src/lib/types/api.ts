@@ -13,11 +13,9 @@ import { TimeRange, FacilityAvailability } from './index';
  * POST /api/scrape のリクエストボディ形式を定義します。
  *
  * @property {string[]} dates - ISO 8601形式の日付配列（例: ["2025-12-06", "2025-12-07"]）
- * @property {TimeRange} [timeRange] - オプションの時間範囲フィルター
  */
 export interface ScrapeRequest {
   dates: string[];
-  timeRange?: TimeRange;
 }
 
 /**

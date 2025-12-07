@@ -71,13 +71,9 @@ export interface AvailabilityData {
 }
 
 /**
- * 時間範囲
+ * 時間範囲（非推奨）
  *
- * 検索条件として指定する開始時刻から終了時刻までの範囲を表します。
- * 未指定の場合は全時間帯が検索対象となります。
- *
- * @property {string} from - 開始時刻（例: "9:00"）
- * @property {string} to - 終了時刻（例: "12:00"）
+ * @deprecated この機能は要件から削除されました。このインターフェースは後方互換性のために残されていますが、使用しないでください。
  */
 export interface TimeRange {
   readonly from: string;
@@ -90,11 +86,9 @@ export interface TimeRange {
  * ユーザーが指定する検索条件を保持します。
  *
  * @property {Date[]} dates - 検索対象日付の配列（1つ以上の日付を含む）
- * @property {TimeRange} [timeRange] - 指定時間範囲（オプション）。未指定の場合は全時間帯が検索対象
  */
 export interface SearchParams {
   readonly dates: readonly Date[];
-  readonly timeRange?: TimeRange;
 }
 
 /**

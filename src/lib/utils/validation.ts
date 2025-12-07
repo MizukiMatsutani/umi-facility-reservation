@@ -1,7 +1,7 @@
 /**
  * バリデーションユーティリティ関数
  *
- * 検索パラメータと時間範囲のバリデーションを提供します。
+ * 検索パラメータのバリデーションを提供します。
  * エラーが発生した場合は、日本語のエラーメッセージをthrowします。
  */
 
@@ -50,20 +50,11 @@ export function validateSearchParams(dates: Date[]): void {
 }
 
 /**
- * 時間範囲をバリデーションします
+ * 時間範囲をバリデーションします（非推奨）
  *
- * @param {TimeRange | undefined} timeRange - バリデーション対象の時間範囲（undefinedの場合は全時間帯）
+ * @deprecated この機能は要件から削除されました。この関数は後方互換性のために残されていますが、使用しないでください。
+ * @param {TimeRange | undefined} timeRange - バリデーション対象の時間範囲
  * @throws {Error} 終了時刻が開始時刻以前の場合、または時刻フォーマットが不正な場合
- *
- * @example
- * validateTimeRange({ from: '9:00', to: '12:00' });
- * // エラーなし
- *
- * validateTimeRange({ from: '12:00', to: '9:00' });
- * // Error: 終了時刻は開始時刻より後の時刻を指定してください
- *
- * validateTimeRange(undefined);
- * // エラーなし（全時間帯）
  */
 export function validateTimeRange(timeRange: TimeRange | undefined): void {
   // undefinedの場合は全時間帯なのでバリデーション不要

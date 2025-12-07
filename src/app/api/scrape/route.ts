@@ -2,12 +2,12 @@
  * スクレイピングAPIエンドポイント
  *
  * POST /api/scrape
- * 指定された日付と時間範囲で宇美町施設の空き状況をスクレイピングします。
+ * 指定された日付で宇美町施設の空き状況をスクレイピングします。
  */
 
 import { NextResponse } from 'next/server';
 import type { ScrapeRequest, ScrapeResponse, ErrorResponse } from '@/lib/types/api';
-import { validateSearchParams, validateTimeRange } from '@/lib/utils/validation';
+import { validateSearchParams } from '@/lib/utils/validation';
 import { rateLimiter } from '@/lib/scraper/rateLimiter';
 import { FacilityScraper } from '@/lib/scraper';
 
@@ -16,7 +16,6 @@ import { FacilityScraper } from '@/lib/scraper';
  *
  * リクエストボディ:
  * - dates: ISO 8601形式の日付文字列配列
- * - timeRange: オプションの時間範囲（from, to）
  *
  * レスポンス:
  * - 200: 成功 - ScrapeResponse（facilities配列を含む）
@@ -51,7 +50,6 @@ export async function POST(request: Request): Promise<NextResponse<ScrapeRespons
     // 検索パラメータのバリデーション
     try {
       validateSearchParams(dates);
-      validateTimeRange(body.timeRange);
     } catch (error) {
       const errorResponse: ErrorResponse = {
         error: 'validation',
@@ -76,7 +74,7 @@ export async function POST(request: Request): Promise<NextResponse<ScrapeRespons
     try {
       // スクレイピング実行
       const scraper = new FacilityScraper();
-      const facilities = await scraper.scrapeFacilities(dates, body.timeRange);
+      const facilities = await scraper.scrapeFacilities(dates);
 
       const response: ScrapeResponse = {
         facilities,

@@ -478,8 +478,8 @@ sequenceDiagram
     participant SC as Scraper
     participant EXT as 宇美町システム
 
-    UI->>API: POST /api/scrape {dates, timeRange}
-    API->>SC: scrapeFacilities(dates, timeRange)
+    UI->>API: POST /api/scrape {dates}
+    API->>SC: scrapeFacilities(dates)
 
     Note over SC,EXT: Step 1: 検索ページ (WgR_ModeSelect)
     SC->>EXT: 1. navigateToSearchPage()
