@@ -1,0 +1,25 @@
+# Render.com デプロイ設定
+# 詳細: https://render.com/docs/blueprint-spec
+
+services:
+  # Web Service: Next.js アプリケーション
+  - type: web
+    name: umi-facility-reservation
+    runtime: node
+    region: singapore # アジア最寄りリージョン（oregon, frankfurt, singapore）
+    plan: free # フリープラン（750時間/月）
+    branch: main # デプロイ対象ブランチ
+    buildCommand: pnpm install && pnpm build
+    startCommand: pnpm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 20.18.1 # Node.js 20.x LTS
+      # Puppeteer設定
+      - key: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD
+        value: false
+      - key: PUPPETEER_EXECUTABLE_PATH
+        value: /usr/bin/chromium-browser
+    healthCheckPath: /api/health
+    autoDeploy: true # mainブランチへのpushで自動デプロイ

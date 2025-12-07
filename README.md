@@ -19,7 +19,7 @@
 - **スタイリング**: TailwindCSS 4
 - **スクレイピング**: Puppeteer, Cheerio
 - **テスト**: Vitest, React Testing Library
-- **デプロイ**: Vercel
+- **デプロイ**: Render.com (以前: Vercel)
 
 ## セットアップ
 
@@ -176,20 +176,44 @@ src/
 
 ## デプロイ
 
-### Vercelへのデプロイ
+### Render.comへのデプロイ（推奨）
+
+本番環境は **Render.com** を使用しています。
+
+**Vercelからの移行理由**: VercelのIPアドレスが宇美町システムのファイアウォールにブロックされる問題が発生しました（`net::ERR_CONNECTION_TIMED_OUT`）。Render.comでは異なるIPアドレス範囲を使用するため、この問題を回避できます。
+
+#### デプロイ手順
+
+1. **Render.comアカウントを作成**
+   - [Render.com](https://render.com/)でGitHubアカウントを使用してサインアップ
+
+2. **リポジトリを接続**
+   - "New +" → "Blueprint" を選択
+   - GitHubリポジトリ `umi-facility-reservation` を選択
+   - `render.yaml` が自動検出されます
+
+3. **デプロイの確認**
+   - ビルドログでPuppeteerとNext.jsのビルドを確認
+   - デプロイ完了後、`/api/health` でヘルスチェック
+
+詳細な手順は [docs/deployment/render-deployment-guide.md](docs/deployment/render-deployment-guide.md) を参照してください。
+
+#### デプロイ設定（`render.yaml`で自動設定）
+
+- **ビルドコマンド**: `pnpm install && pnpm build`
+- **起動コマンド**: `pnpm start`
+- **推奨リージョン**: Singapore（アジア最寄り）
+- **プラン**: Free（750時間/月）
+
+### Vercelへのデプロイ（非推奨）
+
+**注意**: VercelではIPブロッキング問題により、本番環境でスクレイピングが動作しません。開発・テスト目的のみで使用してください。
 
 1. Vercelアカウントを作成
 2. リポジトリをVercelに接続
 3. 自動的にビルドとデプロイが実行されます
 
 詳細は [Vercel公式ドキュメント](https://vercel.com/docs) を参照してください。
-
-### デプロイ設定
-
-- **ビルドコマンド**: `pnpm build`
-- **出力ディレクトリ**: `.next`
-- **インストールコマンド**: `pnpm install`
-- **推奨リージョン**: Tokyo (hnd1)
 
 ## トラブルシューティング
 
@@ -231,6 +255,7 @@ MIT License
 
 ## 関連ドキュメント
 
+- [Render.comデプロイガイド](docs/deployment/render-deployment-guide.md)
 - [ユーザーガイド](docs/user-guide.md)
 - [API仕様書](docs/api/scrape-endpoint.md)
 - [E2Eテスト手順](docs/testing/e2e-manual.md)
