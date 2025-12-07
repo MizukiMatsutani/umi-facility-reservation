@@ -573,18 +573,26 @@ export class FacilityScraper {
         }
       });
 
-      // 表示ボタンをクリック
+      // 表示ボタンをクリック（AJAXリクエストでページを更新）
       await page.click('#btnHyoji');
 
-      // ページが更新されるまで待機（本番環境では60秒に延長）
-      await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 60000 });
+      // AJAX更新完了を待機（チェックボックスが再表示されるまで）
+      // NOTE: この操作はページ全体の遷移ではなく、AJAX更新のため waitForNavigation は使用しない
+      console.log('⏳ AJAX更新を待機中...');
+
+      // 古いチェックボックスが削除され、新しいチェックボックスが表示されるまで待つ
+      await page.waitForFunction(
+        () => {
+          const checkboxes = document.querySelectorAll('input[type="checkbox"][name="checkdate"]');
+          return checkboxes.length > 0;
+        },
+        { timeout: 60000 }
+      );
+
+      // さらにDOM更新が完全に終わるまで少し待機
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
       console.log('✅ 表示期間を1ヶ月に設定完了');
-
-      // 日付チェックボックスが表示されるまで待機
-      await page.waitForSelector('input[type="checkbox"][name="checkdate"]', {
-        timeout: 30000,
-      });
 
       // デバッグ用スクリーンショットは本番環境では無効化（read-only file system対策）
       // await page.screenshot({ path: 'debug-phase2-calendar.png', fullPage: true });
