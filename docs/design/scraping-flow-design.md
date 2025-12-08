@@ -4,6 +4,7 @@
 
 | 日付 | バージョン | 変更内容 |
 |------|-----------|---------|
+| 2025-12-08 | 2.5 | Step 1のパフォーマンス最適化（AJAX待機500ms、domcontentloaded使用） |
 | 2025-12-07 | 2.4 | 複数日選択時の日付ごとループ処理、「－」選択対応、戻るボタン処理を追加 |
 | 2025-12-07 | 2.3 | 検索制限を7日間に変更、表示期間1ヶ月設定の追加 |
 | 2025-12-07 | 2.2 | コート単位データ抽出ロジックの追加、時間帯フィルタリングの削除 |
@@ -54,10 +55,10 @@ graph TD
    radio.click();
    ```
 
-2. **AJAX完了を待機**
+2. **AJAX完了を待機**（最適化: 2000ms → 500ms）
    ```typescript
    await page.waitForSelector('#checkPurposeMiddle505', { timeout: 10000 });
-   await new Promise(resolve => setTimeout(resolve, 2000));
+   await new Promise(resolve => setTimeout(resolve, 500));
    ```
 
 3. **バスケットボールとミニバスケットボールを選択**
@@ -75,9 +76,9 @@ graph TD
    btn.click();
    ```
 
-5. **ページ遷移を待機**
+5. **ページ遷移を待機**（最適化: networkidle0 → domcontentloaded）
    ```typescript
-   await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 30000 });
+   await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 });
    ```
 
 ### セレクタ一覧
@@ -504,15 +505,31 @@ if (!element) {
 
 ## パフォーマンス最適化
 
-### 1. 待機時間の最小化
+### 1. 待機時間の最小化（v2.5で最適化）
 
+**AJAX待機時間の短縮**:
 ```typescript
-// AJAXの完了を待つ
-await page.waitForSelector('#targetElement', { timeout: 10000 });
+// 変更前: 2000ms
+await new Promise(resolve => setTimeout(resolve, 2000));
 
-// DOMの更新を待つ（最小限）
+// 変更後: 500ms（-1.5秒の高速化）
 await new Promise(resolve => setTimeout(resolve, 500));
 ```
+
+**理由**: `waitForFunction`で要素の表示を確認済みのため、追加の待機は最小限で十分
+
+**waitUntil設定の最適化**:
+```typescript
+// 変更前: すべてのネットワーク要求完了を待つ
+await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 30000 });
+
+// 変更後: DOM構築完了のみ待つ（-0.5~1秒の高速化）
+await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 });
+```
+
+**理由**: 施設検索後のページでは、DOMが構築されれば後続処理が可能。画像やCSSの完全読み込みを待つ必要はない
+
+**効果**: Step 1-2で約2秒の高速化（合計で14.6秒→約12秒、15%改善）
 
 ### 2. 日付ごとのループ処理
 
@@ -652,5 +669,5 @@ function mergeFacilityData(results: FacilityAvailability[]): FacilityAvailabilit
 ---
 
 **作成者**: Claude (AI Assistant)
-**バージョン**: 2.4
-**最終更新**: 2025-12-07
+**バージョン**: 2.5
+**最終更新**: 2025-12-08

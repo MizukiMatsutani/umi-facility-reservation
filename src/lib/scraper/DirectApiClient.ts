@@ -154,8 +154,8 @@ export class DirectApiClient {
         { timeout: 30000 }
       );
 
-      // DOMが完全に更新されるまで追加で待機
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // DOMが完全に更新されるまで追加で待機（最適化: 2000ms → 500ms）
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       // バスケットボールとミニバスケットボールを選択
       await this.page.evaluate(() => {
@@ -230,9 +230,9 @@ export class DirectApiClient {
         throw new Error('チェックボックスが選択されていません');
       }
 
-      // ページ遷移の待機をセットアップ
+      // ページ遷移の待機をセットアップ（最適化: networkidle0 → domcontentloaded）
       const navigationPromise = this.page.waitForNavigation({
-        waitUntil: 'networkidle0',
+        waitUntil: 'domcontentloaded',
         timeout: 30000,
       });
 
