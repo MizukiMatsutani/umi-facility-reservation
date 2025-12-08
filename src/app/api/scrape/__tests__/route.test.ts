@@ -133,8 +133,7 @@ describe('/api/scrape POST エンドポイント', () => {
 
       expect(mockScrapeFacilities).toHaveBeenCalledTimes(1);
       expect(mockScrapeFacilities).toHaveBeenCalledWith(
-        [new Date('2025-12-06'), new Date('2025-12-07')],
-        { from: '09:00', to: '12:00' }
+        [new Date('2025-12-06'), new Date('2025-12-07')]
       );
     });
 
@@ -152,7 +151,7 @@ describe('/api/scrape POST エンドポイント', () => {
 
       expect(response.status).toBe(200);
       expect(data.facilities).toEqual(mockFacilities);
-      expect(mockScrapeFacilities).toHaveBeenCalledWith([new Date('2025-12-06')], undefined);
+      expect(mockScrapeFacilities).toHaveBeenCalledWith([new Date('2025-12-06')]);
     });
   });
 
@@ -187,7 +186,8 @@ describe('/api/scrape POST エンドポイント', () => {
       expect(data.retryable).toBe(false);
     });
 
-    it('不正な時間範囲（To < From）で400エラーを返す', async () => {
+    // timeRange機能は最適化により削除されました
+    it.skip('不正な時間範囲（To < From）で400エラーを返す', async () => {
       const requestBody: ScrapeRequest = {
         dates: ['2025-12-06'],
         timeRange: {

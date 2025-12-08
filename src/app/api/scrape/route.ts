@@ -3,6 +3,9 @@
  *
  * POST /api/scrape
  * 指定された日付で宇美町施設の空き状況をスクレイピングします。
+ *
+ * クエリパラメータ:
+ * - stream=true: Server-Sent Events (SSE) でプログレス情報をストリーミング
  */
 
 import { NextResponse } from 'next/server';
@@ -12,21 +15,64 @@ import { rateLimiter } from '@/lib/scraper/rateLimiter';
 import { FacilityScraper } from '@/lib/scraper';
 
 /**
+ * GETハンドラ（SSEストリーミング専用）
+ *
+ * クエリパラメータ:
+ * - stream: "true" （必須）
+ * - dates: カンマ区切りの日付文字列（YYYY-MM-DD形式）
+ *
+ * レスポンス:
+ * - 200: SSEストリーム
+ * - 400: バリデーションエラー - ErrorResponse
+ * - 429: レート制限エラー - ErrorResponse
+ */
+export async function GET(request: Request): Promise<Response> {
+  return handleRequest(request, true);
+}
+
+/**
  * POSTハンドラ
  *
  * リクエストボディ:
  * - dates: ISO 8601形式の日付文字列配列
  *
  * レスポンス:
- * - 200: 成功 - ScrapeResponse（facilities配列を含む）
+ * - 200: 成功 - ScrapeResponse（facilities配列を含む）またはSSEストリーム
  * - 400: バリデーションエラー - ErrorResponse
  * - 429: レート制限エラー - ErrorResponse
  * - 500: サーバーエラー - ErrorResponse
  */
-export async function POST(request: Request): Promise<NextResponse<ScrapeResponse | ErrorResponse>> {
+export async function POST(request: Request): Promise<NextResponse<ScrapeResponse | ErrorResponse> | Response> {
+  return handleRequest(request, false);
+}
+
+/**
+ * リクエストハンドラ（共通ロジック）
+ */
+async function handleRequest(request: Request, isGet: boolean): Promise<NextResponse<ScrapeResponse | ErrorResponse> | Response> {
   try {
-    // リクエストボディをパース
-    const body: ScrapeRequest = await request.json();
+    // クエリパラメータを確認（SSEストリーミングモードかどうか）
+    const url = new URL(request.url);
+    const useStreaming = url.searchParams.get('stream') === 'true';
+
+    // リクエストボディをパース（GETリクエストまたはストリーミングモードの場合はクエリパラメータから取得）
+    let body: ScrapeRequest;
+    if (isGet || useStreaming) {
+      const datesParam = url.searchParams.get('dates');
+      if (!datesParam) {
+        const errorResponse: ErrorResponse = {
+          error: 'validation',
+          message: '日付が指定されていません',
+          retryable: false,
+        };
+        return NextResponse.json(errorResponse, { status: 400 });
+      }
+      body = {
+        dates: datesParam.split(','),
+      };
+    } else {
+      body = await request.json();
+    }
 
     // ISO 8601文字列をDateオブジェクトに変換
     let dates: Date[];
@@ -72,7 +118,63 @@ export async function POST(request: Request): Promise<NextResponse<ScrapeRespons
     }
 
     try {
-      // スクレイピング実行
+      // SSEストリーミングモードの場合
+      if (useStreaming) {
+        // Server-Sent Events用のストリームを作成
+        const encoder = new TextEncoder();
+        const stream = new ReadableStream({
+          async start(controller) {
+            try {
+              // プログレスコールバックを定義
+              const progressCallback = (step: string, progress: number, currentDate?: Date) => {
+                console.log('[SSE progressCallback] Called:', step, progress); // デバッグログ
+                const data = JSON.stringify({
+                  type: 'progress',
+                  step,
+                  progress,
+                  currentDate: currentDate?.toISOString(),
+                });
+                const message = `data: ${data}\n\n`;
+                console.log('[SSE progressCallback] Enqueuing:', message.substring(0, 100)); // デバッグログ
+                controller.enqueue(encoder.encode(message));
+              };
+
+              // スクレイパーを実行
+              const scraper = new FacilityScraper({
+                progressCallback,
+                reportProgress: true,
+              });
+              const facilities = await scraper.scrapeFacilities(dates);
+
+              // 最終結果を送信
+              const resultData = JSON.stringify({
+                type: 'result',
+                facilities,
+              });
+              controller.enqueue(encoder.encode(`data: ${resultData}\n\n`));
+              controller.close();
+            } catch (error) {
+              // エラーをストリームで送信
+              const errorData = JSON.stringify({
+                type: 'error',
+                message: error instanceof Error ? error.message : String(error),
+              });
+              controller.enqueue(encoder.encode(`data: ${errorData}\n\n`));
+              controller.close();
+            }
+          },
+        });
+
+        return new Response(stream, {
+          headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+          },
+        });
+      }
+
+      // 通常モード：従来通りのJSON返却
       const scraper = new FacilityScraper();
       const facilities = await scraper.scrapeFacilities(dates);
 

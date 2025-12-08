@@ -1,4 +1,17 @@
 /**
+ * プログレス報告のコールバック関数型
+ *
+ * @param step - 現在のステップ名（例: "トークン取得", "施設検索"）
+ * @param progress - 進捗率（0〜100）
+ * @param currentDate - 現在処理中の日付（オプション）
+ */
+export type ProgressCallback = (
+  step: string,
+  progress: number,
+  currentDate?: Date
+) => void;
+
+/**
  * スクレイパーの動作を制御するオプション
  */
 export interface ScraperOptions {
@@ -39,4 +52,14 @@ export interface ScraperOptions {
    * @default true
    */
   fallbackOnError?: boolean;
+
+  /**
+   * プログレス報告用のコールバック関数
+   *
+   * 各処理ステップの進捗を外部に通知するために使用します
+   * コールバック内でエラーが発生してもスクレイピング処理は中断されません
+   *
+   * @default undefined
+   */
+  progressCallback?: ProgressCallback;
 }

@@ -46,10 +46,31 @@ export class DirectApiError extends Error {
 export class DirectApiClient {
   private browser: any;
   private page: any;
+  private stepTimes: Map<string, number>;
 
   constructor() {
     this.browser = null;
     this.page = null;
+    this.stepTimes = new Map();
+  }
+
+  /**
+   * ステップの開始時刻を記録
+   */
+  private startTimer(stepName: string): void {
+    this.stepTimes.set(stepName, Date.now());
+    console.log(`⏱️  [開始] ${stepName}`);
+  }
+
+  /**
+   * ステップの終了時刻を記録し、所要時間を出力
+   */
+  private endTimer(stepName: string): void {
+    const startTime = this.stepTimes.get(stepName);
+    if (startTime) {
+      const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+      console.log(`⏱️  [完了] ${stepName} (${duration}秒)`);
+    }
   }
 
   /**
@@ -59,6 +80,8 @@ export class DirectApiClient {
    * ブラウザを初期化
    */
   async initBrowser(): Promise<void> {
+    this.startTimer('ブラウザ初期化');
+    
     // 本番環境（Vercel/Render.com等）では@sparticuz/chromiumを使用
     const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true' || process.env.VERCEL === '1';
 
@@ -109,6 +132,8 @@ export class DirectApiClient {
     await this.page.setUserAgent(
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     );
+    
+    this.endTimer('ブラウザ初期化');
   }
 
   /**
@@ -126,6 +151,8 @@ export class DirectApiClient {
    * Step 1: 検索ページへナビゲート（レガシーモード）
    */
   private async navigateToSearchPage(): Promise<void> {
+    this.startTimer('Step 1: 検索ページアクセス');
+    
     const maxRetries = 3;
     let lastError: Error | null = null;
 
@@ -139,6 +166,7 @@ export class DirectApiClient {
         });
 
         console.log('✅ 検索ページへのアクセス成功');
+        this.endTimer('Step 1: 検索ページアクセス');
         return;
       } catch (error) {
         lastError = error as Error;
@@ -158,6 +186,8 @@ export class DirectApiClient {
    * Step 2a: スポーツ選択（レガシーモード）
    */
   private async selectSports(): Promise<void> {
+    this.startTimer('Step 2a: スポーツ選択');
+    
     try {
       console.log('📍 Step 2a: スポーツ種目を選択中...');
 
@@ -231,6 +261,7 @@ export class DirectApiClient {
       }
 
       console.log('✅ スポーツ種目の選択完了');
+      this.endTimer('Step 2a: スポーツ選択');
     } catch (error) {
       if (error instanceof Error) {
         throw new Error(`スポーツ種目の選択に失敗しました: ${error.message}`);
@@ -243,6 +274,8 @@ export class DirectApiClient {
    * Step 2b: 施設検索実行（レガシーモード）
    */
   private async searchFacilities(): Promise<void> {
+    this.startTimer('Step 2b: 施設検索');
+    
     try {
       console.log('📍 Step 2b: 施設検索を実行中...');
 
@@ -299,6 +332,7 @@ export class DirectApiClient {
       }
 
       console.log('✅ 施設検索完了');
+      this.endTimer('Step 2b: 施設検索');
     } catch (error) {
       if (error instanceof Error) {
         throw new Error(`施設検索に失敗しました: ${error.message}`);
@@ -314,6 +348,8 @@ export class DirectApiClient {
    * Step 2c: 全施設を選択してナビゲート（APIモード）
    */
   private async selectAllFacilitiesAndNavigate(): Promise<void> {
+    this.startTimer('Step 2c: 全施設選択＋遷移');
+    
     try {
       console.log('📍 Step 2c: 全施設を選択中（APIモード）...');
 
@@ -401,6 +437,7 @@ export class DirectApiClient {
       }
 
       console.log('✅ 施設別空き状況ページへ遷移完了（APIモード）');
+      this.endTimer('Step 2c: 全施設選択＋遷移');
     } catch (error) {
       if (error instanceof Error) {
         throw new Error(`施設選択とナビゲーションに失敗しました: ${error.message}`);
@@ -447,6 +484,8 @@ export class DirectApiClient {
    * @param targetDate 選択したい日付
    */
   async selectDateAndNavigate(targetDate: Date): Promise<void> {
+    this.startTimer('Step 3: 日付選択＋遷移');
+    
     try {
       const { format } = await import('date-fns');
       const dateStr = format(targetDate, 'yyyyMMdd');
@@ -543,6 +582,7 @@ export class DirectApiClient {
       }
 
       console.log('✅ 時間帯別空き状況ページへ遷移完了（APIモード）');
+      this.endTimer('Step 3: 日付選択＋遷移');
     } catch (error) {
       if (error instanceof Error) {
         throw new Error(`日付選択とナビゲーションに失敗しました: ${error.message}`);

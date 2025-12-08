@@ -12,6 +12,7 @@ import type {
   FacilityAvailability,
   TimeSlot,
 } from '@/lib/types';
+import type { ScraperOptions } from './types';
 import { parseFacilities, parseAvailability } from './parser';
 
 /**
@@ -22,6 +23,17 @@ import { parseFacilities, parseAvailability } from './parser';
  */
 export class FacilityScraper {
   private browser: any | null = null;
+  private options: ScraperOptions;
+
+  constructor(options: ScraperOptions = {}) {
+  this.options = {
+    useDirectApi: options.useDirectApi ?? true,
+    enableResourceBlocking: options.enableResourceBlocking ?? false,
+    reportProgress: options.reportProgress ?? false,
+    fallbackOnError: options.fallbackOnError ?? true,
+    progressCallback: options.progressCallback,  // コールバックを追加
+  };
+}
 
   /**
    * スクレイピング実行（メインオーケストレーションメソッド）
@@ -52,6 +64,9 @@ export class FacilityScraper {
 
       await this.initBrowser();
       const page = await this.browser!.newPage();
+
+      // リソースブロッキングを設定（オプションが有効な場合）
+      await this.setupResourceBlocking(page);
 
       // ダイアログを自動的に受け入れる
       page.on('dialog', async (dialog: any) => {
@@ -145,6 +160,23 @@ export class FacilityScraper {
   private async scrapeFacilitiesDirectMode(
     dates: Date[]
   ): Promise<FacilityAvailability[]> {
+    const stepTimes = new Map<string, number>();
+    const logStep = (stepName: string, isStart: boolean) => {
+      if (this.options.reportProgress) {
+        const now = Date.now();
+        if (isStart) {
+          stepTimes.set(stepName, now);
+          console.log(`[${new Date(now).toISOString()}] ${stepName} 開始`);
+        } else {
+          const startTime = stepTimes.get(stepName);
+          if (startTime) {
+            const duration = ((now - startTime) / 1000).toFixed(2);
+            console.log(`[${new Date(now).toISOString()}] ${stepName} 完了 (${duration}秒)`);
+          }
+        }
+      }
+    };
+
     try {
       console.log('🚀 スクレイピング開始: ハイブリッドモード');
       console.log('   Step 1-2: レガシーモード（施設検索まで）');
@@ -154,22 +186,32 @@ export class FacilityScraper {
       console.log(`📅 対象日数: ${dates.length}日`);
 
       const startTime = Date.now();
+      this.reportProgress('初期化', 0);
 
       // DirectApiClientで施設検索まで実行
+      logStep('DirectApiClient初期化', true);
       const { DirectApiClient } = await import('./DirectApiClient');
       const apiClient = new DirectApiClient();
+      logStep('DirectApiClient初期化', false);
 
       console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log('📍 Phase 1: 施設検索を実行（レガシーモード + APIモード）');
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
+      logStep('施設検索実行', true);
+      this.reportProgress('施設検索実行', 10);
       const { page, browser } = await apiClient.execute();
+      logStep('施設検索実行', false);
 
       // FacilityScraperのbrowserとpageを一時的に設定
       this.browser = browser;
 
+      // リソースブロッキングを設定（オプションが有効な場合）
+      await this.setupResourceBlocking(page);
+
       console.log('\n✅ 施設別空き状況ページへの遷移完了');
       console.log('📍 Phase 2: 日付ごとに処理（APIモード + 既存メソッド）');
+      this.reportProgress('施設カレンダー取得完了', 20);
 
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       // 日付ごとにループして処理
@@ -178,13 +220,18 @@ export class FacilityScraper {
 
       for (let i = 0; i < dates.length; i++) {
         const currentDate = dates[i];
+        const progress = 20 + (60 * (i / dates.length));
+        
         console.log(`\n📍 [${i + 1}/${dates.length}] ${format(currentDate, 'yyyy-MM-dd')} の処理開始`);
+        this.reportProgress(`日付処理 ${i + 1}/${dates.length}`, progress, currentDate);
 
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         // Step 3: 日付を選択して時間帯別空き状況ページへ遷移（APIモード）
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         try {
+          logStep(`日付選択: ${format(currentDate, 'yyyy-MM-dd')}`, true);
           await apiClient.selectDateAndNavigate(currentDate);
+          logStep(`日付選択: ${format(currentDate, 'yyyy-MM-dd')}`, false);
         } catch (error) {
           // 日付がスキップされた場合（選択可能な施設がない）、次の日付へ
           console.log('⏭️  この日付はスキップされました。次の日付へ進みます');
@@ -198,7 +245,9 @@ export class FacilityScraper {
         // Step 4: 時間帯別空き状況データを一括取得
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         console.log('📍 Step 4: 時間帯別空き状況を取得');
+        logStep('時間帯別空き状況取得', true);
         const results = await this.scrapeTimeSlots(page, [currentDate]);
+        logStep('時間帯別空き状況取得', false);
 
         // 結果を蓄積
         allResults.push(...results);
@@ -206,7 +255,9 @@ export class FacilityScraper {
         // 最後の日付でなければ、施設別空き状況ページに戻る
         if (i < dates.length - 1) {
           console.log('📍 施設別空き状況ページに戻る');
+          logStep('施設カレンダーへ戻る', true);
           await this.goBackToFacilityCalendar(page);
+          logStep('施設カレンダーへ戻る', false);
         }
       }
 
@@ -214,12 +265,33 @@ export class FacilityScraper {
       // 同じ施設の複数日のデータをマージ
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       console.log('\n📍 複数日のデータをマージ中...');
+      logStep('データマージ', true);
+      this.reportProgress('データマージ', 90);
       const mergedResults = this.mergeFacilityData(allResults);
+      logStep('データマージ', false);
 
       const totalDuration = Date.now() - startTime;
       console.log(`\n✅ スクレイピング完了: ${mergedResults.length}施設`);
       console.log(`⏱️  合計所要時間: ${(totalDuration / 1000).toFixed(1)}秒`);
       console.log(`🚀 ハイブリッドモード: UI最小化 + API最大活用`);
+
+      // 詳細なステップ別サマリーを出力
+      if (this.options.reportProgress && stepTimes.size > 0) {
+        console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('📊 ステップ別所要時間サマリー');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        
+        const stepNames = Array.from(stepTimes.keys());
+        for (let i = 0; i < stepNames.length; i += 2) {
+          const stepName = stepNames[i];
+          console.log(`  • ${stepName}`);
+        }
+        
+        console.log(`\n合計: ${(totalDuration / 1000).toFixed(1)}秒`);
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      }
+
+      this.reportProgress('完了', 100);
 
       return mergedResults;
     } catch (error) {
@@ -279,6 +351,61 @@ export class FacilityScraper {
           '--disable-gpu',
         ],
       });
+    }
+  }
+
+  /**
+   * リソースブロッキングを設定（画像、CSS、フォントをブロック）
+   *
+   * @param page - Puppeteer Pageオブジェクト
+   */
+  private async setupResourceBlocking(page: any): Promise<void> {
+    if (!this.options.enableResourceBlocking) {
+      return;
+    }
+
+    await page.setRequestInterception(true);
+
+    page.on('request', (request: any) => {
+      const resourceType = request.resourceType();
+      
+      // 画像、CSS、フォントのリクエストをブロック
+      if (['image', 'stylesheet', 'font'].includes(resourceType)) {
+        request.abort();
+      } else {
+        request.continue();
+      }
+    });
+
+    if (this.options.reportProgress) {
+      console.log('✓ リソースブロッキングを有効化しました（画像、CSS、フォントをブロック）');
+    }
+  }
+
+  /**
+   * プログレスコールバックを安全に呼び出す
+   *
+   * @param step - ステップ名
+   * @param progress - 進捗率（0〜100）
+   * @param currentDate - 現在処理中の日付（オプション）
+   */
+  private reportProgress(
+    step: string,
+    progress: number,
+    currentDate?: Date
+  ): void {
+    console.log('[reportProgress] Called:', step, progress, 'hasCallback:', !!this.options.progressCallback); // デバッグログ
+    try {
+      if (this.options.progressCallback) {
+        console.log('[reportProgress] Calling progressCallback...'); // デバッグログ
+        this.options.progressCallback(step, progress, currentDate);
+        console.log('[reportProgress] progressCallback completed'); // デバッグログ
+      } else {
+        console.log('[reportProgress] No progressCallback defined'); // デバッグログ
+      }
+    } catch (error) {
+      // コールバックエラーはスクレイピング処理を中断させない
+      console.error('プログレスコールバックエラー:', error);
     }
   }
 
@@ -923,13 +1050,20 @@ export class FacilityScraper {
    * @see docs/design/scraping-flow-design.md (Step 4)
    */
   async scrapeTimeSlots(page: any, dates: Date[]): Promise<FacilityAvailability[]> {
+    const startTime = Date.now();
+
     try {
       console.log('📍 時間帯別空き状況データを取得中...');
+      console.log('⏱️  [開始] Step 4: 時間帯別空き状況取得');
 
       // カレンダーが表示されるまで待機
+      const waitStart = Date.now();
       await page.waitForSelector('.item .calendar', { timeout: 30000 });
+      const waitDuration = ((Date.now() - waitStart) / 1000).toFixed(2);
+      console.log(`⏱️  カレンダー待機時間: ${waitDuration}秒`);
 
       // 全施設のデータを取得
+      const parseStart = Date.now();
       const facilitiesData = await page.evaluate((targetDates: string[]) => {
         const items = Array.from(document.querySelectorAll('.item'));
 
@@ -1096,6 +1230,9 @@ export class FacilityScraper {
           };
         });
 
+      const parseDuration = ((Date.now() - parseStart) / 1000).toFixed(2);
+      console.log(`⏱️  データパース時間: ${parseDuration}秒`);
+
       console.log(`✅ ${results.length}施設のデータを取得しました`);
 
       // 詳細ログ: 各施設のデータ内容を確認
@@ -1109,6 +1246,9 @@ export class FacilityScraper {
           `📊 施設${i + 1} (${result.facility.name}): 日付数=${result.availability.length}, 総時間帯数=${totalSlots}, 空き=${availableSlots}`
         );
       });
+
+      const totalDuration = ((Date.now() - startTime) / 1000).toFixed(2);
+      console.log(`⏱️  [完了] Step 4: 時間帯別空き状況取得 (${totalDuration}秒)`);
 
       return results;
     } catch (error) {

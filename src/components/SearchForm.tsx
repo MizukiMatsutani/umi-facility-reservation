@@ -8,11 +8,21 @@ import { SearchParams } from '@/lib/types';
 import { validateSearchParams } from '@/lib/utils/validation';
 import { Calendar, RefreshCw, Search } from 'lucide-react';
 
+/**
+ * プログレス状態の型定義
+ */
+export interface ProgressState {
+  step: string;
+  progress: number;
+  currentDate?: Date;
+}
+
 interface SearchFormProps {
   onSubmit: (params: SearchParams) => void;
   onValidationError?: (error: string) => void;
   isLoading?: boolean;
   initialDates?: Date[];
+  progressState?: ProgressState | null;
 }
 
 /**
@@ -24,6 +34,7 @@ export default function SearchForm({
   onValidationError,
   isLoading = false,
   initialDates = [],
+  progressState = null,
 }: SearchFormProps) {
   const [selectedDates, setSelectedDates] = useState<Date[]>(initialDates);
   const [resetKey, setResetKey] = useState<number>(0); // リセット用のキー
@@ -122,7 +133,7 @@ export default function SearchForm({
         </div>
 
         {/* 選択状態の表示 */}
-        {selectedDates.length > 0 && (
+        {selectedDates.length > 0 && !isLoading && (
           <div className="rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 p-4 border border-blue-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -133,6 +144,39 @@ export default function SearchForm({
                   日付を選択中
                 </span>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* プログレス表示 */}
+        {isLoading && progressState && (
+          <div className="rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 p-4 border border-blue-200">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-900">
+                  {progressState.step}
+                </span>
+                <span className="text-sm font-bold text-blue-600">
+                  {progressState.progress.toFixed(0)}%
+                </span>
+              </div>
+              {/* プログレスバー */}
+              <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 h-2 rounded-full transition-all duration-300 ease-out"
+                  style={{ width: `${progressState.progress}%` }}
+                />
+              </div>
+              {/* 現在処理中の日付 */}
+              {progressState.currentDate && (
+                <p className="text-xs text-gray-600">
+                  処理中: {new Date(progressState.currentDate).toLocaleDateString('ja-JP', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -204,7 +248,7 @@ export default function SearchForm({
         onConfirm={handleDialogConfirm}
         onCancel={handleDialogCancel}
         title="検索に時間がかかります"
-        message="複数日を検索する場合、2〜3分程度お時間をいただく場合があります。検索を続けますか？"
+        message="複数日を検索する場合、30秒〜1分程度お時間をいただく場合があります。検索を続けますか？"
         confirmText="検索を続ける"
         cancelText="キャンセル"
       />

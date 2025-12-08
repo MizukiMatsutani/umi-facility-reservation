@@ -88,7 +88,7 @@
 
 ## Phase 3: 補助的な最適化機能
 
-- [-] 10. リソースブロッキング機能を実装
+- [x] 10. リソースブロッキング機能を実装
   - File: src/lib/scraper/index.ts
   - page.setRequestInterception(true) を有効化
   - 画像・CSS・フォントのリクエストをabort()、HTML・JavaScript・XHRはcontinue()
@@ -97,7 +97,7 @@
   - _Requirements: 3_
   - _Prompt: Role: Puppeteerとブラウザネットワークに精通した開発者 | Task: FacilityScraper初期化時にScraperOptions.enableResourceBlocking=trueの場合、page.setRequestInterception(true)を設定し、'image', 'stylesheet', 'font'リソースタイプのリクエストをrequest.abort()、それ以外はrequest.continue()する。 | Restrictions: リクエストインターセプションによるページ機能への影響を最小化 | Success: 画像・CSS・フォントがブロックされ、ページ遷移が高速化される（ページ機能は正常動作）_
 
-- [ ] 11. プログレス報告機能の基盤を実装
+- [x] 11. プログレス報告機能の基盤を実装
   - File: src/lib/scraper/index.ts
   - ProgressCallback型を定義（ステップ名、進捗率、現在処理中の日付などを引数に取る関数型）
   - ScraperOptionsにprogressCallback?: ProgressCallbackを追加
@@ -106,7 +106,7 @@
   - _Requirements: 4_
   - _Prompt: Role: イベント駆動アーキテクチャに精通したTypeScript開発者 | Task: ProgressCallback型（引数: step: string, progress: number, currentDate?: Date）を定義し、ScraperOptions.progressCallbackプロパティとして追加。scrapeFacilitiesメソッド内で各ステップ実行時にコールバックを呼び出す実装を追加。 | Restrictions: コールバックはオプショナル、呼び出しエラーでスクレイピングを中断しない | Success: プログレスコールバックが各ステップで正しく呼び出され、外部からリアルタイムで進捗を取得できる_
 
-- [ ] 12. プログレス報告の詳細ログ出力を実装
+- [x] 12. プログレス報告の詳細ログ出力を実装
   - File: src/lib/scraper/index.ts
   - 各処理ステップの開始・完了時にタイムスタンプ付きログを出力
   - 合計所要時間と各ステップの内訳を最終的にログ出力
@@ -117,7 +117,7 @@
 
 ## Phase 4: フロントエンド統合
 
-- [ ] 13. SearchFormにプログレス表示UIを追加（基礎）
+- [x] 13. SearchFormにプログレス表示UIを追加（基礎）
   - File: src/components/SearchForm.tsx
   - ローディング状態に加えて、現在の処理ステップと進捗率を表示する領域を追加
   - Purpose: ユーザーに検索進捗を可視化し、体感速度を改善
@@ -125,8 +125,8 @@
   - _Requirements: 4_
   - _Prompt: Role: Reactとユーザー体験設計に精通したフロントエンド開発者 | Task: SearchFormコンポーネントに検索中の進捗を表示するUIを追加。useState で progressState: { step: string, progress: number } を管理し、ローディング中にステップ名と進捗率（プログレスバーまたはパーセント表示）を表示。 | Restrictions: 既存のSearchFormレイアウトを大きく崩さない、モバイルレスポンシブ対応 | Success: 検索中に「施設カレンダー取得中...」「X/Y日目を処理中...」などが表示され、ユーザーが進捗を把握できる_
 
-- [ ] 14. API RouteでProgressCallbackを統合
-  - File: src/app/api/search/route.ts (または該当するAPI Route)
+- [x] 14. API RouteでProgressCallbackを統合
+  - File: src/app/api/scrape/route.ts
   - FacilityScraper呼び出し時にprogressCallbackを渡し、リアルタイムでクライアントに進捗を送信
   - Server-Sent Events (SSE) またはWebSocketを使用して進捗をストリーミング
   - Purpose: バックエンドからフロントエンドへ進捗情報をリアルタイム配信
@@ -134,8 +134,8 @@
   - _Requirements: 4_
   - _Prompt: Role: Next.jsとリアルタイム通信に精通したフルスタック開発者 | Task: 検索APIエンドポイントでFacilityScraperを呼び出す際にprogressCallbackを渡し、コールバック内でServer-Sent Events (text/event-stream) を使用してクライアントに進捗データを送信。検索完了時に最終結果を返す。 | Restrictions: SSE接続はタイムアウトを考慮、エラー時も適切にクライアントへ通知 | Success: クライアントがリアルタイムで進捗を受信し、SearchFormに反映される_
 
-- [ ] 15. フロントエンドでSSE進捗を受信して表示
-  - File: src/components/SearchForm.tsx
+- [x] 15. フロントエンドでSSE進捗を受信して表示
+  - File: src/app/page.tsx
   - EventSourceを使用してSSEストリームを購読
   - 受信した進捗データでprogressStateを更新
   - Purpose: リアルタイムプログレス表示の完成
@@ -172,7 +172,7 @@
   - _Requirements: Performance Non-Functional Requirements_
   - _Prompt: Role: パフォーマンスベンチマークに精通した開発者 | Task: 直接APIモード（useDirectApi=true）とレガシーモード（useDirectApi=false）でそれぞれ3回ずつ7日検索を実行し、各回の所要時間と平均値を計測してコンソールとJSONファイルに出力するスクリプトを作成。 | Restrictions: 実環境（宇美町システム）へアクセス、レート制限を遵守（5秒間隔） | Success: ベンチマーク結果が「直接APIモードは100〜140秒高速化」を実証_
 
-- [ ] 19. 既存テストの回帰テスト実行
+- [x] 19. 既存テストの回帰テスト実行
   - Command: pnpm test
   - すべての既存テストがパスすることを確認
   - 失敗したテストがあれば修正
@@ -193,7 +193,7 @@
   - _Requirements: Usability Non-Functional Requirements_
   - _Prompt: Role: 技術ドキュメントライター | Task: README.mdに「検索パフォーマンス最適化」セクションを追加。直接API呼び出しモードの説明、ScraperOptionsの各フラグの用途、ベンチマーク結果（7日検索: 120〜180秒 → 20〜40秒）、トラブルシューティング（フォールバック機能の説明）を記載。 | Restrictions: 日本語で記述、技術的に正確かつ分かりやすい表現 | Success: ドキュメントが明確で、開発者が最適化内容を理解できる_
 
-- [ ] 21. 確認ダイアログのメッセージを更新
+- [x] 21. 確認ダイアログのメッセージを更新
   - File: src/components/SearchForm.tsx
   - 複数日検索時のメッセージを「2〜3分程度」から「30秒〜1分程度」に更新
   - Purpose: 最適化後の実際の所要時間をユーザーに正しく伝える
