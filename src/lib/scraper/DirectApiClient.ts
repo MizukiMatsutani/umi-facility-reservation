@@ -103,7 +103,7 @@ export class DirectApiClient {
    */
   private async navigateToSearchPage(): Promise<void> {
     this.startTimer('Step 1: 検索ページアクセス');
-    
+
     const maxRetries = 3;
     let lastError: Error | null = null;
 
@@ -115,6 +115,14 @@ export class DirectApiClient {
           waitUntil: 'domcontentloaded',
           timeout: 30000,
         });
+
+        // 屋内スポーツのラジオボタンが確実にロードされるまで待機
+        await this.page.waitForSelector('#radioPurposeLarge02', {
+          timeout: 10000,
+        });
+
+        // ページが完全に準備できるまで短時間待機
+        await new Promise(resolve => setTimeout(resolve, 500));
 
         console.log('✅ 検索ページへのアクセス成功');
         this.endTimer('Step 1: 検索ページアクセス');

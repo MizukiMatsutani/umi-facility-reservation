@@ -127,7 +127,6 @@ async function handleRequest(request: Request, isGet: boolean): Promise<NextResp
             try {
               // プログレスコールバックを定義
               const progressCallback = (step: string, progress: number, currentDate?: Date) => {
-                console.log('[SSE progressCallback] Called:', step, progress); // デバッグログ
                 const data = JSON.stringify({
                   type: 'progress',
                   step,
@@ -135,7 +134,6 @@ async function handleRequest(request: Request, isGet: boolean): Promise<NextResp
                   currentDate: currentDate?.toISOString(),
                 });
                 const message = `data: ${data}\n\n`;
-                console.log('[SSE progressCallback] Enqueuing:', message.substring(0, 100)); // デバッグログ
                 controller.enqueue(encoder.encode(message));
               };
 
