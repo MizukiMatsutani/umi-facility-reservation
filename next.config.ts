@@ -16,7 +16,7 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
 
   // Puppeteerをサーバーコンポーネントの外部パッケージとして設定
-  // Vercelのサーバーレス環境で正しく動作させるために必要
+  // サーバーレス環境（Render.comなど）で正しく動作させるために必要
   // Next.js 16では serverExternalPackages に変更
   serverExternalPackages: ["puppeteer", "puppeteer-core", "@sparticuz/chromium"],
 };

@@ -18,7 +18,7 @@ import { parseFacilities, parseAvailability } from './parser';
  * 宇美町施設予約システムのスクレイピングクラス
  *
  * Puppeteerを使用してブラウザを自動操作し、施設の空き状況を取得します。
- * Vercelのサーバーレス環境に対応した設定でブラウザを起動します。
+ * Render.comなどの本番環境に対応した設定でブラウザを起動します。
  */
 export class FacilityScraper {
   private browser: any | null = null;
@@ -123,12 +123,12 @@ export class FacilityScraper {
   /**
    * Puppeteerブラウザの初期化
    *
-   * Vercelのサーバーレス環境に対応した設定でブラウザを起動します。
-   * --no-sandbox と --disable-setuid-sandbox はVercelで必要な設定です。
+   * 本番環境（Render.comなど）に対応した設定でブラウザを起動します。
+   * --no-sandbox と --disable-setuid-sandbox はサーバーレス環境で必要な設定です。
    */
   async initBrowser(): Promise<void> {
-    // 本番環境（Vercel, Render.com等）では@sparticuz/chromiumを使用
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1' || process.env.RENDER === 'true';
+    // 本番環境（Render.com等）では@sparticuz/chromiumを使用
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     if (isProduction) {
       const chromium = await import('@sparticuz/chromium');

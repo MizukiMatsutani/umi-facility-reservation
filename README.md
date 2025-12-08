@@ -19,7 +19,7 @@
 - **スタイリング**: TailwindCSS 4
 - **スクレイピング**: Puppeteer, Cheerio
 - **テスト**: Vitest, React Testing Library
-- **デプロイ**: Render.com (以前: Vercel)
+- **デプロイ**: Render.com
 
 ## セットアップ
 
