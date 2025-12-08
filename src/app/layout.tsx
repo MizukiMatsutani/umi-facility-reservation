@@ -3,11 +3,11 @@ import { Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
 import SplashScreen from "@/components/SplashScreen";
 
-// 日本語フォントの設定（Noto Sans JP）
+// 日本語フォントの設定(Noto Sans JP)
 const notoSansJP = Noto_Sans_JP({
   subsets: ["latin", "latin-ext"],
   weight: ["400", "500", "700"],
-  display: "swap", // フォント読み込み中も文字を表示（CLS防止）
+  display: "swap", // フォント読み込み中も文字を表示(CLS防止)
   variable: "--font-noto-sans-jp",
   preload: true, // 重要なフォントをプリロード
 });
@@ -15,9 +15,31 @@ const notoSansJP = Noto_Sans_JP({
 // メタデータ設定
 export const metadata: Metadata = {
   title: "宇美町施設予約検索",
-  description: "宇美町の体育施設（バスケットボール・ミニバスケットボール）の空き状況を検索できます",
+  description: "宇美町の体育施設(バスケットボール・ミニバスケットボール)の空き状況を検索できます",
   robots: "index, follow",
   manifest: "/manifest.json",
+  icons: {
+    apple: "/images/MITCHELL.png",
+  },
+  openGraph: {
+    title: "宇美町施設予約検索",
+    description: "宇美町の体育施設(バスケットボール・ミニバスケットボール)の空き状況を検索できます",
+    type: "website",
+    images: [
+      {
+        url: "/images/MITCHELL.png",
+        width: 1200,
+        height: 1200,
+        alt: "宇美町施設予約検索",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary",
+    title: "宇美町施設予約検索",
+    description: "宇美町の体育施設(バスケットボール・ミニバスケットボール)の空き状況を検索できます",
+    images: ["/images/MITCHELL.png"],
+  },
   appleWebApp: {
     capable: true,
     title: "施設予約検索",
@@ -25,7 +47,7 @@ export const metadata: Metadata = {
   },
 };
 
-// ビューポート設定（モバイル最適化）
+// ビューポート設定(モバイル最適化)
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
