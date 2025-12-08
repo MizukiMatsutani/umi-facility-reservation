@@ -48,7 +48,7 @@
   - _Requirements: 1.4_
   - _Prompt: Role: Webスクレイピングとデータパース処理に精通した開発者 | Task: 施設別空き状況ページから指定日付のチェックボックスをすべて選択し、「次へ」ボタンをクリックして時間帯別空き状況ページへ遷移。HTMLから施設・時間帯・空き状況（○/△/×）を抽出してFacilityAvailability配列に変換。 | Restrictions: DOMセレクタは既存実装を参考、エラー時は空配列を返す | Success: 時間帯別空き状況が正しくパースされ、FacilityAvailability型の配列が返される_
 
-- [→] 6. scrapeFacilitiesDirectMode メソッドを実装
+- [x] 6. scrapeFacilitiesDirectMode メソッドを実装
   - File: src/lib/scraper/index.ts
   - DirectApiClientを使用した直接API呼び出しモードのフロー全体を実装
   - 複数日付をループ処理して結果を集約
