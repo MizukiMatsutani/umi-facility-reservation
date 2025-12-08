@@ -364,7 +364,7 @@ const result = await searchFacilities({
 
 ## セキュリティ考慮事項
 
-- **HTTPS**: すべての通信はHTTPS経由で実行されます（Vercel自動設定）
+- **HTTPS**: すべての通信はHTTPS経由で実行されます（Render.com自動設定）
 - **XSS対策**: Reactのデフォルト保護により、XSS攻撃を防止します
 - **レート制限**: DoS攻撃を防ぐため、厳格なレート制限を実装しています
 - **個人情報**: 検索履歴は保存されません

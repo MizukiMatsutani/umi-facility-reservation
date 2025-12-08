@@ -181,11 +181,11 @@ await page.evaluate(() => {
 
 ## デプロイ時の注意事項
 
-### Vercel環境での動作
+### Render.com環境での動作
 
-**Puppeteerの制限**:
-- Vercelの無料枠ではPuppeteerの実行時間に制限がある
-- 10秒以上かかる可能性がある処理はタイムアウトする可能性
+**Puppeteerの動作**:
+- Render.comでは実行時間制限なし
+- Dockerサポートによる安定したChromium環境
 
 **対策**:
 - タイムアウト設定を適切に設定済み（各ステップ10-30秒）
@@ -222,7 +222,7 @@ await page.evaluate(() => {
 
 ### 長期（拡張機能）
 1. **定期的なスクレイピングとキャッシュ**
-   - Vercel Cronを使用した定期実行
+   - Render.com Cron Jobsを使用した定期実行
    - データベースへの保存
 
 2. **通知機能**

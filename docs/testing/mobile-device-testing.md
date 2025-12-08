@@ -41,10 +41,10 @@
 
 3. 同じWi-Fiネットワークに接続したモバイルデバイスからアクセス
 
-#### Vercel（本番環境）でのテスト
+#### Render.com（本番環境）でのテスト
 
-- Vercelデプロイ後のURLを使用
-- 例: `https://your-app.vercel.app`
+- Render.comデプロイ後のURLを使用
+- 例: `https://umi-facility-reservation.onrender.com`
 
 ### 2. テストシナリオの確認
 

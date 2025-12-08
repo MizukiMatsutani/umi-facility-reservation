@@ -72,18 +72,19 @@
      --form-factor=mobile
    ```
 
-### Vercel（本番環境）でのテスト
+### Render.com（本番環境）でのテスト
 
 1. **デプロイURLを確認**
 
-   Vercelにデプロイ後、デプロイURLを取得します。
+   Render.comにデプロイ後、デプロイURLを取得します。
+   本番URL: `https://umi-facility-reservation.onrender.com`
 
 2. **Lighthouseの実行**
 
    上記の方法1または方法2を使用し、URLを本番URLに変更します。
 
    ```bash
-   lighthouse https://your-deployment-url.vercel.app \
+   lighthouse https://umi-facility-reservation.onrender.com \
      --output html \
      --output-path ./lighthouse-report-production.html \
      --chrome-flags="--headless" \

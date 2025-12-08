@@ -176,11 +176,11 @@ src/
 
 ## デプロイ
 
-### Render.comへのデプロイ（推奨）
+### Render.comへのデプロイ
 
 本番環境は **Render.com** を使用しています。
 
-**Vercelからの移行理由**: VercelのIPアドレスが宇美町システムのファイアウォールにブロックされる問題が発生しました（`net::ERR_CONNECTION_TIMED_OUT`）。Render.comでは異なるIPアドレス範囲を使用するため、この問題を回避できます。
+**本番URL**: https://umi-facility-reservation.onrender.com
 
 #### デプロイ手順
 
@@ -205,21 +205,11 @@ src/
 - **推奨リージョン**: Singapore（アジア最寄り）
 - **プラン**: Free（750時間/月）
 
-### Vercelへのデプロイ（非推奨）
-
-**注意**: VercelではIPブロッキング問題により、本番環境でスクレイピングが動作しません。開発・テスト目的のみで使用してください。
-
-1. Vercelアカウントを作成
-2. リポジトリをVercelに接続
-3. 自動的にビルドとデプロイが実行されます
-
-詳細は [Vercel公式ドキュメント](https://vercel.com/docs) を参照してください。
-
 ## トラブルシューティング
 
 ### Puppeteerが動作しない
 
-Vercelでは、Puppeteerの依存関係が自動的にインストールされます。ローカル環境で問題が発生する場合は、以下を確認してください：
+ローカル環境で問題が発生する場合は、以下を確認してください：
 
 ```bash
 # Chromiumの再インストール
@@ -256,6 +246,8 @@ MIT License
 ## 関連ドキュメント
 
 - [Render.comデプロイガイド](docs/deployment/render-deployment-guide.md)
+- [モニタリングガイド](docs/deployment/monitoring-guide.md)
+- [Vercel環境クリーンアップガイド](docs/deployment/vercel-cleanup-guide.md)
 - [ユーザーガイド](docs/user-guide.md)
 - [API仕様書](docs/api/scrape-endpoint.md)
 - [E2Eテスト手順](docs/testing/e2e-manual.md)

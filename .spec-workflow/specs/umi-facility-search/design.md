@@ -30,7 +30,7 @@
 - **TailwindCSS**: モバイルファーストのレスポンシブデザイン
 - **Puppeteer**: 信頼性の高いスクレイピング
 - **pnpm 9.x**: パッケージ管理
-- **Node.js 20.x**: Vercel推奨LTSバージョン
+- **Node.js 20.x**: LTSバージョン
 
 ### プロジェクト構造 (structure.md)
 
@@ -78,8 +78,8 @@ src/
 ### 統合ポイント
 
 - **宇美町システム**: スクレイピングによるデータ取得（https://www.11489.jp/Umi/web/Home/WgR_ModeSelect）
-- **Vercelデプロイ**: 環境変数による設定管理
-- **将来的な拡張**: Vercel KV (Redis)によるキャッシュ（初期バージョンでは未実装）
+- **Render.comデプロイ**: 環境変数による設定管理
+- **将来的な拡張**: Redis (Render.com Add-ons)によるキャッシュ（初期バージョンでは未実装）
 
 ## アーキテクチャ
 
@@ -1141,7 +1141,7 @@ requirements.mdに従い、初期バージョンではE2Eテストは実装し�
 ### セキュリティ対策
 
 1. **HTTPS通信**
-   - Vercelのデフォルト証明書を使用
+   - Render.comのデフォルト証明書を使用
    - すべてのリクエストをHTTPSで実行
 
 2. **XSS対策**
@@ -1159,7 +1159,7 @@ requirements.mdに従い、初期バージョンではE2Eテストは実装し�
 
 4. **環境変数の管理**
    - `.env.local`でローカル環境変数を管理
-   - センシティブ情報はVercelの環境変数として設定
+   - センシティブ情報はRender.comの環境変数として設定
 
 ### モバイル最適化
 
@@ -1221,16 +1221,11 @@ requirements.mdに従い、初期バージョンではE2Eテストは実装し�
 
 ## デプロイ設計
 
-### Render.comデプロイ設定（2025-12-07更新）
+### Render.comデプロイ設定
 
-**重要な変更**: VercelからRender.comへ移行
+**本番環境**: https://umi-facility-reservation.onrender.com
 
-**移行理由**:
-- VercelのIPアドレスが宇美町施設予約システムのファイアウォールにブロックされることが判明
-- 接続タイムアウト（net::ERR_CONNECTION_TIMED_OUT）が発生し、リトライ・User-Agent変更でも解決せず
-- Render.comは異なるIPレンジを使用し、ブロックを回避できる見込み
-
-**Render.com設定（予定）**:
+**Render.com設定**:
 - **サービスタイプ**: Web Service
 - **ランタイム**: Node.js 20.x
 - **ビルドコマンド**: `pnpm install && pnpm build`
@@ -1252,23 +1247,6 @@ RUN apt-get update && apt-get install -y \
   chromium \
   && rm -rf /var/lib/apt/lists/*
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
-```
-
-**~~旧Vercel設定~~（廃止）**:
-```json
-{
-  "buildCommand": "pnpm build",
-  "devCommand": "pnpm dev",
-  "installCommand": "pnpm install",
-  "framework": "nextjs",
-  "regions": ["hnd1"],
-  "functions": {
-    "app/api/**/*.ts": {
-      "memory": 1024,
-      "maxDuration": 90
-    }
-  }
-}
 ```
 
 ### ビルド最適化
@@ -1578,76 +1556,6 @@ try {
 - `../../../docs/design/scraping-flow-design.md` - スクレイピングフロー設計書（詳細版）
 - `../../../docs/tasks/implementation-tasks.md` - 実装タスク一覧（5フェーズ）
 
-## 本番環境デバッグと最適化（2025-12-07）
-
-### Vercel本番環境での問題と対策
-
-#### 問題1: ナビゲーションタイムアウト（解決済み）
-**症状**: Step 2（施設選択・遷移）で30秒タイムアウト
-
-**原因**:
-- `waitUntil: 'networkidle0'` がVercel環境で遅い
-- 30秒のタイムアウトが不十分
-
-**対策**:
-- `waitUntil: 'domcontentloaded'` に変更（より高速）
-- タイムアウトを30秒→60秒に延長（src/lib/scraper/index.ts:478）
-- vercel.json の maxDuration を60秒→90秒に延長
-
-#### 問題2: Read-only File System（解決済み）
-**症状**: デバッグ用スクリーンショット保存時にEROFSエラー
-
-**原因**: Vercelのサーバーレス環境はファイルシステムが読み取り専用（/tmpのみ書き込み可）
-
-**対策**: デバッグ用スクリーンショットをコメントアウト（src/lib/scraper/index.ts:563-565）
-
-#### 問題3: 接続タイムアウト（**未解決・致命的**）
-**症状**:
-- Step 1（初回ページアクセス）で `net::ERR_CONNECTION_TIMED_OUT`
-- 3回のリトライすべてが15秒でタイムアウト
-- 合計50秒以上かけても接続失敗
-
-**原因分析**:
-- VercelのIPアドレスレンジが宇美町施設予約システムのファイアウォールにブロックされている
-- TCP接続レベルでの拒否のため、アプリケーション層での対策は無効
-
-**試行した対策（すべて失敗）**:
-1. ✗ リトライロジック追加（3回試行、2秒間隔）
-2. ✗ User-Agent変更（カスタム→標準ブラウザ）
-3. ✗ タイムアウト延長
-
-**結論**: **Vercelでは本番運用不可能** → Render.comへ移行
-
-### Render.comへの移行決定
-
-**選定理由**:
-1. 異なるIPアドレスレンジでファイアウォールブロックを回避できる見込み
-2. 実行時間制限なし（Vercelは90秒上限）
-3. 無料枠で750時間/月の稼働時間
-4. Dockerサポートによる柔軟なChromium環境構築
-
-**代替案との比較**:
-- Netlify: ✗ 実行時間制限が短い（10-26秒）
-- Heroku: ✗ 無料枠廃止（最低$50/月）
-- Fly.io: △ 東京リージョンあるが、メモリ制限とコスト面でRender.comを優先
-
-### スクレイピング最適化まとめ
-
-**実装済みの最適化**:
-1. **ナビゲーション戦略**: `networkidle0` → `domcontentloaded`（高速化）
-2. **タイムアウト設定**: 30秒 → 60秒（余裕を持たせる）
-3. **リトライロジック**: 3回試行、2秒間隔（ネットワーク一時エラー対策）
-4. **User-Agent**: 標準ブラウザ（ブロック回避）
-5. **デバッグ機能**: 本番環境ではスクリーンショット無効化
-
-**コード変更箇所**:
-- `src/lib/scraper/index.ts`:
-  - L189-224: リトライロジック付きnavigateToSearchPage
-  - L478: ナビゲーション戦略とタイムアウト変更
-  - L563-565: スクリーンショット無効化
-- `vercel.json`:
-  - L11: maxDuration 60 → 90
-
 ## まとめ
 
 本設計ドキュメントは、requirements.mdで定義されたすべての要件を実現するための技術設計を詳細に定義しました。
@@ -1658,7 +1566,7 @@ try {
 3. Puppeteerによる信頼性の高いスクレイピング
 4. TDDアプローチによるユニットテスト
 5. モバイルファーストのレスポンシブデザイン
-6. **Render.comでのホスティング**（Vercelから変更）
+6. **Render.comでのホスティング**
 
 **Phase 2実装完了 (2025-12-06):**
 - ✅ 4ステップの完全なスクレイピングフロー実装
@@ -1667,22 +1575,14 @@ try {
 - ✅ 日付選択ロジックの実装
 - ✅ 時間帯別空き状況の一括取得
 
-**本番環境デバッグ完了 (2025-12-07):**
-- ✅ ナビゲーションタイムアウト解決
-- ✅ Read-only File System対策
-- ✅ リトライロジック実装
-- ✅ VercelのIPブロック問題を特定
-- ✅ Render.comへの移行決定
+**Render.com本番環境デプロイ完了 (2025-12-07):**
+- ✅ Render.comへのデプロイ成功
+- ✅ 宇美町システムへのアクセス成功
+- ✅ 7日分の施設検索が正常に完了
+- ✅ すべての機能が正常動作
 
 **重要な技術的発見:**
 - チェックボックス選択は `label.click()` が必須
 - 日付valueフォーマット: `YYYYMMDD` + 施設コード
 - 空き状況ラベル（○△×－休）による選択フィルタリング
 - 最大10日まで選択可能（システム制約）
-- **VercelのIPアドレスが宇美町システムにブロックされる**（致命的）
-
-**次のステップ:**
-- Render.comへのデプロイ設定
-- 本番環境での動作確認（IPブロック回避の検証）
-- パフォーマンス最適化
-- エラーハンドリングの強化
