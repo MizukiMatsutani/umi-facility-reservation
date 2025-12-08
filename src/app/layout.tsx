@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   robots: "index, follow",
   manifest: "/manifest.json",
   icons: {
-    apple: "/images/MITCHELL.png",
+    apple: "/images/MITCHELL-apple-touch-icon.png",
   },
   openGraph: {
     title: "宇美町施設予約検索",
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/images/MITCHELL.png",
+        url: "/images/MITCHELL-og.png",
         width: 1200,
         height: 1200,
         alt: "宇美町施設予約検索",
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     card: "summary",
     title: "宇美町施設予約検索",
     description: "宇美町の体育施設(バスケットボール・ミニバスケットボール)の空き状況を検索できます",
-    images: ["/images/MITCHELL.png"],
+    images: ["/images/MITCHELL-og.png"],
   },
   appleWebApp: {
     capable: true,
