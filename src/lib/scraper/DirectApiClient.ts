@@ -320,11 +320,11 @@ export class DirectApiClient {
 
       // map_* フィールドを全て追加
       Object.entries(pageData.mapFields).forEach(([name, value]) => {
-        formData.append(name, value);
+        formData.append(name, value as string);
       });
 
       // 全施設IDを追加
-      pageData.facilityIds.forEach((id) => {
+      pageData.facilityIds.forEach((id: string) => {
         formData.append('checkShisetsu', id);
       });
 
@@ -465,7 +465,7 @@ export class DirectApiClient {
       formData.append('radioJikan', 'all');
       
       // 選択した日付のチェックボックスを全て追加
-      pageData.checkdates.forEach((checkdate) => {
+      pageData.checkdates.forEach((checkdate: string) => {
         formData.append('checkdate', checkdate);
       });
       

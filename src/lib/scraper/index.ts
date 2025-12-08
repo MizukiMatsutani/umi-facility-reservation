@@ -188,12 +188,9 @@ export class FacilityScraper {
         } catch (error) {
           // 日付がスキップされた場合（選択可能な施設がない）、次の日付へ
           console.log('⏭️  この日付はスキップされました。次の日付へ進みます');
-          
-          // 施設別空き状況ページに戻る（次の日付処理のため）
-          if (i < dates.length - 1) {
-            console.log('📍 施設別空き状況ページに戻る');
-            await this.goBackToFacilityCalendar(page);
-          }
+
+          // スキップ時は既に施設別空き状況ページにいるため、戻る操作は不要
+          // そのまま次の日付処理へ進む
           continue;
         }
 
