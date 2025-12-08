@@ -183,7 +183,7 @@
 
 ## Phase 6: ドキュメント更新とデプロイ
 
-- [-] 20. README.mdにパフォーマンス最適化の説明を追加
+- [x] 20. README.mdにパフォーマンス最適化の説明を追加
   - File: README.md
   - 直接API呼び出しモードとレガシーモードの説明
   - ScraperOptionsの使い方を記載
@@ -192,6 +192,7 @@
   - _Leverage: 既存のREADME.md構造_
   - _Requirements: Usability Non-Functional Requirements_
   - _Prompt: Role: 技術ドキュメントライター | Task: README.mdに「検索パフォーマンス最適化」セクションを追加。直接API呼び出しモードの説明、ScraperOptionsの各フラグの用途、ベンチマーク結果（7日検索: 120〜180秒 → 20〜40秒）、トラブルシューティング（フォールバック機能の説明）を記載。 | Restrictions: 日本語で記述、技術的に正確かつ分かりやすい表現 | Success: ドキュメントが明確で、開発者が最適化内容を理解できる_
+  - _Status: 実装完了。「パフォーマンス最適化」セクションを追加し、直接APIモードの説明、ScraperOptionsの詳細、ベンチマーク結果の表、フォールバック機能、トラブルシューティングガイドを記載。_
 
 - [x] 21. 確認ダイアログのメッセージを更新
   - File: src/components/SearchForm.tsx
