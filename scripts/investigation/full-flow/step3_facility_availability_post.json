@@ -1,0 +1,45 @@
+{
+  "url": "https://www.11489.jp/Umi/web/Yoyaku/WgR_ShisetsuKensaku",
+  "method": "POST",
+  "headers": {
+    "accept-language": "ja",
+    "content-type": "application/x-www-form-urlencoded",
+    "origin": "https://www.11489.jp",
+    "referer": "https://www.11489.jp/Umi/web/Yoyaku/WgR_ShisetsuKensaku",
+    "upgrade-insecure-requests": "1",
+    "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "sec-ch-ua": "\"Chromium\";v=\"131\", \"Not_A Brand\";v=\"24\"",
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": "\"macOS\"",
+    "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+    "cookie": "ASP.NET_SessionId=yt3exl45l4augh55dlvve045; __RequestVerificationToken_L1VtaS9XZWI_=tQ6hLngntQr5NjPOkyNthTwuueu8RnwPvPa1lahkegEh1svOLewyef+7fN8mtm7HJ8inlfiPLWuxJqO4YQW+jYqAAYCttg2R8UPlO9uIP47LV3trCh+InsDlk9I+ZtVGiKm/EA=="
+  },
+  "postData": {
+    "__RequestVerificationToken": "1dutYhlY+uJSrn9cb0Jgad4abQr/KcVxJIo+9uXMWjT7I5ZSLUem6BXzFiR7mpO0gOIJP6lolwCKYybHGwPbaiLVgr+2KnHO3MPn2y8HM0vn0a9UUZxnjj24K0QLg2zjg9KM3A==",
+    "__EVENTTARGET": "next",
+    "__EVENTARGUMENT": "",
+    "map_341007": "http://maps.google.co.jp/maps?f=q&hl=ja&geocode=&q=%e7%a6%8f%e5%b2%a1%e7%9c%8c%e7%b3%9f%e5%b1%8b%e9%83%a1%e5%ae%87%e7%be%8e%e7%94%ba%e8%8b%a5%e8%8d%89%e4%ba%8c%e4%b8%81%e7%9b%ae%ef%bc%91%e7%95%aa%ef%bc%92%e5%8f%b7",
+    "map_341009": "http://maps.google.co.jp/maps?f=q&hl=ja&geocode=&q=%e7%a6%8f%e5%b2%a1%e7%9c%8c%e7%b3%9f%e5%b1%8b%e9%83%a1%e5%ae%87%e7%be%8e%e7%94%ba%e3%82%86%e3%82%8a%e3%81%8c%e4%b8%98%e4%b8%80%e4%b8%81%e7%9b%ae%ef%bc%93%e7%95%aa%ef%bc%91%e5%8f%b7",
+    "map_341014": "http://maps.google.co.jp/maps?f=q&hl=ja&geocode=&q=%e7%a6%8f%e5%b2%a1%e7%9c%8c%e7%b3%9f%e5%b1%8b%e9%83%a1%e5%ae%87%e7%be%8e%e7%94%ba%e5%ae%87%e7%be%8e%e4%ba%94%e4%b8%81%e7%9b%ae%ef%bc%94%e7%95%aa%ef%bc%91%e5%8f%b7",
+    "map_341015": "http://maps.google.co.jp/maps?f=q&hl=ja&geocode=&q=%e7%a6%8f%e5%b2%a1%e7%9c%8c%e7%b3%9f%e5%b1%8b%e9%83%a1%e5%ae%87%e7%be%8e%e7%94%ba%e8%8b%a5%e8%8d%89%e4%ba%8c%e4%b8%81%e7%9b%ae%ef%bc%91%e7%95%aa%ef%bc%91%e5%8f%b7",
+    "map_341016": "http://maps.google.co.jp/maps?f=q&hl=ja&geocode=&q=%e7%a6%8f%e5%b2%a1%e7%9c%8c%e7%b3%9f%e5%b1%8b%e9%83%a1%e5%ae%87%e7%be%8e%e7%94%ba%e3%82%86%e3%82%8a%e3%81%8c%e4%b8%98%e4%b8%80%e4%b8%81%e7%9b%ae%ef%bc%91%e7%95%aa%ef%bc%91%e5%8f%b7",
+    "map_341017": "http://maps.google.co.jp/maps?f=q&hl=ja&geocode=&q=%e7%a6%8f%e5%b2%a1%e7%9c%8c%e7%b3%9f%e5%b1%8b%e9%83%a1%e5%ae%87%e7%be%8e%e7%94%ba%e5%ae%87%e7%be%8e%ef%bc%93%e4%b8%81%e7%9b%ae%ef%bc%99%e7%95%aa%ef%bc%91%e5%8f%b7",
+    "map_341018": "http://maps.google.co.jp/maps?f=q&hl=ja&geocode=&q=%e7%a6%8f%e5%b2%a1%e7%9c%8c%e7%b3%9f%e5%b1%8b%e9%83%a1%e5%ae%87%e7%be%8e%e7%94%ba%e5%ae%87%e7%be%8e%e6%9d%b1%ef%bc%93%e4%b8%81%e7%9b%ae%ef%bc%97%e7%95%aa%ef%bc%91%e5%8f%b7",
+    "map_341019": "http://maps.google.co.jp/maps?f=q&hl=ja&geocode=&q=%e7%a6%8f%e5%b2%a1%e7%9c%8c%e7%b3%9f%e5%b1%8b%e9%83%a1%e5%ae%87%e7%be%8e%e7%94%ba%e5%8e%9f%e7%94%b0%e4%b8%89%e4%b8%81%e7%9b%ae%ef%bc%91%e7%95%aa%ef%bc%91%e5%8f%b7",
+    "map_341020": "http://maps.google.co.jp/maps?f=q&hl=ja&geocode=&q=%e7%a6%8f%e5%b2%a1%e7%9c%8c%e7%b3%9f%e5%b1%8b%e9%83%a1%e5%ae%87%e7%be%8e%e7%94%ba%e6%a1%9c%e5%8e%9f%e4%b8%80%e4%b8%81%e7%9b%ae%ef%bc%91%e7%95%aa%ef%bc%91%e5%8f%b7",
+    "map_341021": "http://maps.google.co.jp/maps?f=q&hl=ja&geocode=&q=%e7%a6%8f%e5%b2%a1%e7%9c%8c%e7%b3%9f%e5%b1%8b%e9%83%a1%e5%ae%87%e7%be%8e%e7%94%ba%e5%a4%a7%e5%ad%97%e4%ba%95%e9%87%8e%ef%bc%94%ef%bc%91%ef%bc%99%e7%95%aa%e5%9c%b0%ef%bc%99",
+    "checkShisetsu": [
+      "341007",
+      "341009",
+      "341014",
+      "341015",
+      "341016",
+      "341017",
+      "341018",
+      "341019",
+      "341020",
+      "341021"
+    ],
+    "HyojiMode": "filterAll"
+  }
+}

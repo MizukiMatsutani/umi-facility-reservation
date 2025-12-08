@@ -1,0 +1,12 @@
+{
+  "id": "approval_1765177819059_bdyiv8l2n",
+  "title": "修正版 要件定義書＆設計書 - 直接API呼び出しアプローチ追加",
+  "filePath": ".spec-workflow/specs/search-performance-optimization/requirements.md",
+  "type": "document",
+  "status": "approved",
+  "createdAt": "2025-12-08T07:10:19.059Z",
+  "category": "spec",
+  "categoryName": "search-performance-optimization",
+  "response": "ダッシュボードから承認",
+  "respondedAt": "2025-12-08T07:10:45.671Z"
+}
