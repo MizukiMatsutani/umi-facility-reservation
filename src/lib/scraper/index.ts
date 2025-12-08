@@ -33,8 +33,21 @@ export class FacilityScraper {
   async scrapeFacilities(
     dates: Date[]
   ): Promise<FacilityAvailability[]> {
+    // 新しい4ステップPOSTフローを使用（デフォルト）
+    return this.scrapeFacilitiesDirectMode(dates);
+  }
+
+  /**
+   * レガシーモードでスクレイピング実行（互換性のため残す）
+   *
+   * @param dates - 検索対象の日付配列
+   * @returns 施設の空き状況データ配列
+   */
+  private async scrapeFacilitiesLegacyMode(
+    dates: Date[]
+  ): Promise<FacilityAvailability[]> {
     try {
-      console.log('🚀 スクレイピング開始: 日付ごとの繰り返しフロー');
+      console.log('🚀 スクレイピング開始: 日付ごとの繰り返しフロー（レガシーモード）');
       console.log(`📅 対象日数: ${dates.length}日`);
 
       await this.initBrowser();
@@ -123,8 +136,8 @@ export class FacilityScraper {
   /**
    * 直接API呼び出しモードでスクレイピング実行（高速化版）
    *
-   * 従来の7ステップフローをスキップして、直接APIエンドポイントにアクセスします。
-   * これにより、7日検索を 120〜180秒 → 20〜40秒 (75%削減) に短縮します。
+   * 調査により発見した4ステップPOSTフローを使用してデータを取得します。
+   * UI操作を一切行わず、HTTPリクエストのみで処理することで高速化を実現します。
    *
    * @param dates - 検索対象の日付配列
    * @returns 施設の空き状況データ配列
@@ -133,60 +146,62 @@ export class FacilityScraper {
     dates: Date[]
   ): Promise<FacilityAvailability[]> {
     try {
-      console.log('🚀 スクレイピング開始: 直接APIモード（高速化版）');
+      console.log('🚀 スクレイピング開始: ハイブリッドモード');
+      console.log('   Step 1-2: レガシーモード（施設検索まで）');
+      console.log('   Step 2c: APIモード（施設選択）');
+      console.log('   Step 3: APIモード（日付選択）');
+      console.log('   Step 4: 既存メソッド（空き状況取得）');
       console.log(`📅 対象日数: ${dates.length}日`);
 
       const startTime = Date.now();
 
-      await this.initBrowser();
-      const page = await this.browser!.newPage();
-
-      // ダイアログを自動的に受け入れる
-      page.on('dialog', async (dialog: any) => {
-        console.log('ダイアログ検出:', dialog.message());
-        await dialog.accept();
-      });
-
-      // DirectApiClientインスタンスを作成
+      // DirectApiClientで施設検索まで実行
       const { DirectApiClient } = await import('./DirectApiClient');
-      const apiClient = new DirectApiClient(page);
+      const apiClient = new DirectApiClient();
+
+      console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('📍 Phase 1: 施設検索を実行（レガシーモード + APIモード）');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+      const { page, browser } = await apiClient.execute();
+
+      // FacilityScraperのbrowserとpageを一時的に設定
+      this.browser = browser;
+
+      console.log('\n✅ 施設別空き状況ページへの遷移完了');
+      console.log('📍 Phase 2: 日付ごとに処理（APIモード + 既存メソッド）');
 
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      // Step 1: CSRFトークンを取得
-      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      console.log('\n📍 Step 1: CSRFトークン取得');
-      const tokenStartTime = Date.now();
-      const token = await apiClient.fetchToken();
-      const tokenDuration = Date.now() - tokenStartTime;
-      console.log(`⏱️  トークン取得: ${(tokenDuration / 1000).toFixed(1)}秒`);
-
-      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      // Step 2: 施設別空き状況ページへ直接POST
-      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      console.log('\n📍 Step 2: 施設別空き状況ページへ直接アクセス');
-      const postStartTime = Date.now();
-      await apiClient.postToFacilityCalendar(token, dates);
-      const postDuration = Date.now() - postStartTime;
-      console.log(`⏱️  直接POST: ${(postDuration / 1000).toFixed(1)}秒`);
-
-      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      // 日付ごとにループしてデータ取得
+      // 日付ごとにループして処理
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       const allResults: FacilityAvailability[] = [];
 
       for (let i = 0; i < dates.length; i++) {
         const currentDate = dates[i];
-        console.log(
-          `\n📍 [${i + 1}/${dates.length}] ${format(currentDate, 'yyyy-MM-dd')} の処理開始`
-        );
+        console.log(`\n📍 [${i + 1}/${dates.length}] ${format(currentDate, 'yyyy-MM-dd')} の処理開始`);
 
-        const dateStartTime = Date.now();
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // Step 3: 日付を選択して時間帯別空き状況ページへ遷移（APIモード）
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        try {
+          await apiClient.selectDateAndNavigate(currentDate);
+        } catch (error) {
+          // 日付がスキップされた場合（選択可能な施設がない）、次の日付へ
+          console.log('⏭️  この日付はスキップされました。次の日付へ進みます');
+          
+          // 施設別空き状況ページに戻る（次の日付処理のため）
+          if (i < dates.length - 1) {
+            console.log('📍 施設別空き状況ページに戻る');
+            await this.goBackToFacilityCalendar(page);
+          }
+          continue;
+        }
 
-        // 日付を選択して時間帯別データを取得
-        const results = await apiClient.selectDateAndFetchTimeSlots(currentDate);
-
-        const dateDuration = Date.now() - dateStartTime;
-        console.log(`⏱️  ${format(currentDate, 'yyyy-MM-dd')}: ${(dateDuration / 1000).toFixed(1)}秒`);
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // Step 4: 時間帯別空き状況データを一括取得
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        console.log('📍 Step 4: 時間帯別空き状況を取得');
+        const results = await this.scrapeTimeSlots(page, [currentDate]);
 
         // 結果を蓄積
         allResults.push(...results);
@@ -207,15 +222,15 @@ export class FacilityScraper {
       const totalDuration = Date.now() - startTime;
       console.log(`\n✅ スクレイピング完了: ${mergedResults.length}施設`);
       console.log(`⏱️  合計所要時間: ${(totalDuration / 1000).toFixed(1)}秒`);
-      console.log(`🚀 直接APIモードにより大幅に高速化されました！`);
+      console.log(`🚀 ハイブリッドモード: UI最小化 + API最大活用`);
 
       return mergedResults;
     } catch (error) {
       if (error instanceof Error) {
-        console.error('❌ 直接APIモードエラー:', error.message);
-        throw new Error(`直接APIモードでのスクレイピングに失敗しました: ${error.message}`);
+        console.error('❌ ハイブリッドモードエラー:', error.message);
+        throw new Error(`ハイブリッドモードでのスクレイピングに失敗しました: ${error.message}`);
       }
-      throw new Error('直接APIモードでのスクレイピングに失敗しました');
+      throw new Error('ハイブリッドモードでのスクレイピングに失敗しました');
     } finally {
       // ブラウザは必ずクリーンアップ
       console.log('\n🧹 ブラウザをクリーンアップ中...');
@@ -727,29 +742,6 @@ export class FacilityScraper {
       await new Promise((resolve) => setTimeout(resolve, 500));
 
       console.log('✅ 既存の選択をクリア完了');
-
-      // デバッグ: 利用可能な日付チェックボックスを確認
-      const availableDates = await page.evaluate(() => {
-        const checkboxes = Array.from(
-          document.querySelectorAll('input[type="checkbox"][name="checkdate"]')
-        ) as HTMLInputElement[];
-
-        return checkboxes.map((checkbox) => {
-          const checkboxDate = checkbox.value.substring(0, 8);
-          const label = document.querySelector(`label[for="${checkbox.id}"]`);
-          const status = label?.textContent?.trim() || '';
-
-          return {
-            date: checkboxDate,
-            status: status,
-            value: checkbox.value,
-            id: checkbox.id,
-            checked: checkbox.checked,
-          };
-        });
-      });
-
-      console.log('📅 利用可能な日付チェックボックス:', JSON.stringify(availableDates, null, 2));
 
       // 日付を選択（全施設×日付の組み合わせを選択）
       const result = await page.evaluate((targetDates: string[]) => {

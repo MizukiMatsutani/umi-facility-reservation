@@ -53,6 +53,8 @@ export const UMI_BASE_URL = 'https://www.11489.jp/Umi/web';
 export const ENDPOINTS = {
   /** 検索モード選択ページ */
   MODE_SELECT: `${UMI_BASE_URL}/Home/WgR_ModeSelect`,
+  /** 施設検索ページ（Step 3で使用） */
+  FACILITY_SEARCH: `${UMI_BASE_URL}/Yoyaku/WgR_ShisetsuKensaku`,
   /** 施設別空き状況ページ */
   FACILITY_AVAILABILITY: `${UMI_BASE_URL}/Yoyaku/WgR_ShisetsubetsuAkiJoukyou`,
   /** 時間帯別空き状況ページ */

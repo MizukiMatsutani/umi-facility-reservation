@@ -1,21 +1,13 @@
 /**
  * DirectApiClient - 宇美町システムの直接API呼び出しクライアント
  *
- * 従来の7ステップフローをスキップして、直接APIエンドポイントにアクセスすることで
- * スクレイピング速度を劇的に改善します。
+ * UI操作を一切行わず、HTTPリクエストのみで処理を行う最適化されたクライアント。
+ * 調査により発見した4ステップPOSTフローを実装:
  *
- * 7ステップフロー（従来）:
- * 1. 検索ページ表示
- * 2. スポーツ選択
- * 3. 検索ボタン
- * 4. 施設一覧表示
- * 5. 全施設選択
- * 6. 施設別空き状況
- * 7. 日付選択 → 時間帯別データ取得
- *
- * 2ステップフロー（直接API）:
- * 1. トークン取得
- * 2. 直接データ取得（日付ごとにループ）
+ * Step 1: モード選択ページ取得（CSRFトークン取得）
+ * Step 2: バスケットボール検索POST（施設リスト取得）
+ * Step 3: 施設選択POST（施設別空き状況ページへ遷移）
+ * Step 4: 日付選択POST（時間帯別空き状況ページへ遷移）
  */
 
 import type { Page } from 'puppeteer-core';
@@ -25,7 +17,8 @@ import type {
   AvailabilityData,
 } from '@/lib/types';
 import { format } from 'date-fns';
-import { FACILITY_IDS, ENDPOINTS } from './constants';
+import { ENDPOINTS } from './constants';
+import * as cheerio from 'cheerio';
 
 /**
  * 直接API呼び出しのエラークラス
@@ -43,407 +36,493 @@ export class DirectApiError extends Error {
  * 宇美町システムのAPIに直接POSTリクエストを送信して、
  * 中間ステップをスキップします。
  */
+/**
+ * 直接API呼び出しによる高速スクレイピング
+ * 
+ * ハイブリッドアプローチ:
+ * - Step 1-2: レガシーモードのロジックを使用（施設検索まで）
+ * - Step 3-4: 既存のメソッドを活用（日付選択と空き状況取得）
+ */
 export class DirectApiClient {
-  private page: Page;
-  private cachedToken: string | null = null;
+  private browser: any;
+  private page: any;
 
-  /**
-   * DirectApiClientのコンストラクタ
-   *
-   * @param page - Puppeteer Pageオブジェクト
-   */
-  constructor(page: Page) {
-    this.page = page;
+  constructor() {
+    this.browser = null;
+    this.page = null;
   }
 
   /**
-   * CSRFトークンを取得してキャッシュ
-   *
-   * 初回アクセス時にセッションCookieと__RequestVerificationTokenを取得します。
-   * トークンは1回のスクレイピングセッション中、再利用されます。
-   *
-   * @returns CSRFトークン文字列
-   * @throws {DirectApiError} トークン取得に失敗した場合
+   * ブラウザを初期化
    */
-  async fetchToken(): Promise<string> {
-    // キャッシュがあれば再利用
-    if (this.cachedToken) {
-      return this.cachedToken;
-    }
+  async initBrowser(): Promise<void> {
+    const puppeteer = await import('puppeteer');
+    this.browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+    this.page = await this.browser.newPage();
 
-    try {
-      console.log('🔑 CSRFトークンを取得中...');
+    // ダイアログを自動的に受け入れる
+    this.page.on('dialog', async (dialog: any) => {
+      console.log('ダイアログ検出:', dialog.message());
+      await dialog.accept();
+    });
 
-      // 検索ページにアクセスしてトークンを取得
-      await this.page.goto(ENDPOINTS.MODE_SELECT, {
-        waitUntil: 'networkidle0',
-        timeout: 30000,
-      });
+    // User-Agent設定
+    await this.page.setUserAgent(
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    );
+  }
 
-      // トークンを抽出
-      const token = await this.page.evaluate(() => {
-        const input = document.querySelector<HTMLInputElement>(
-          'input[name="__RequestVerificationToken"]'
-        );
-        return input?.value ?? null;
-      });
-
-      if (!token) {
-        throw new DirectApiError(
-          'CSRFトークンが見つかりませんでした。ページ構造が変更された可能性があります。'
-        );
-      }
-
-      this.cachedToken = token;
-      console.log('✅ CSRFトークン取得完了');
-
-      return token;
-    } catch (error) {
-      if (error instanceof DirectApiError) {
-        throw error;
-      }
-      throw new DirectApiError('トークン取得中にエラーが発生しました', error);
+  /**
+   * ブラウザをクリーンアップ
+   */
+  async closeBrowser(): Promise<void> {
+    if (this.browser) {
+      await this.browser.close();
+      this.browser = null;
+      this.page = null;
     }
   }
 
   /**
-   * 施設別空き状況ページへ直接POSTリクエスト送信
-   *
-   * 検索ページ → スポーツ選択 → 施設選択の3ステップをスキップして、
-   * 直接施設カレンダーページへ遷移します。
-   *
-   * @param token - CSRFトークン
-   * @param dates - 取得対象の日付配列
-   * @throws {DirectApiError} POSTリクエストに失敗した場合
+   * Step 1: 検索ページへナビゲート（レガシーモード）
    */
-  async postToFacilityCalendar(token: string, dates: Date[]): Promise<void> {
-    try {
-      console.log('📅 施設別空き状況ページへ直接アクセス中...');
+  private async navigateToSearchPage(): Promise<void> {
+    const maxRetries = 3;
+    let lastError: Error | null = null;
 
-      // checkdateパラメータを生成（施設×日付の組み合わせ）
-      const checkdates: string[] = [];
-      for (const date of dates) {
-        const dateStr = format(date, 'yyyyMMdd');
-        for (const facilityId of FACILITY_IDS) {
-          // 施設IDの最後の5桁を使用（例: 341007 → 00701）
-          const facilityCode = facilityId.substring(3) + '01';
-          checkdates.push(`${dateStr}${facilityCode}+++0`);
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`📍 Step 1: 検索ページへアクセス中... (試行 ${attempt}/${maxRetries})`);
+
+        await this.page.goto('https://www.11489.jp/Umi/web/Home/WgR_ModeSelect', {
+          waitUntil: 'domcontentloaded',
+          timeout: 30000,
+        });
+
+        console.log('✅ 検索ページへのアクセス成功');
+        return;
+      } catch (error) {
+        lastError = error as Error;
+        console.log(`⚠️ 試行 ${attempt} 失敗: ${lastError.message}`);
+
+        if (attempt < maxRetries) {
+          console.log('⏳ 2秒後にリトライします...');
+          await new Promise(resolve => setTimeout(resolve, 2000));
         }
       }
+    }
 
-      // POSTデータを構築
-      const formData = new URLSearchParams();
-      formData.append('__RequestVerificationToken', token);
-      formData.append('__EVENTTARGET', 'next');
-      formData.append('__EVENTARGUMENT', '');
-      checkdates.forEach((checkdate) => {
-        formData.append('checkdate', checkdate);
+    throw new Error(`検索ページへのアクセスに失敗しました（${maxRetries}回試行）: ${lastError?.message}`);
+  }
+
+  /**
+   * Step 2a: スポーツ選択（レガシーモード）
+   */
+  private async selectSports(): Promise<void> {
+    try {
+      console.log('📍 Step 2a: スポーツ種目を選択中...');
+
+      // 屋内スポーツのラジオボタンを選択
+      await this.page.evaluate(() => {
+        const radio = document.querySelector('#radioPurposeLarge02') as HTMLInputElement;
+        if (radio) {
+          radio.checked = true;
+          radio.click();
+        } else {
+          throw new Error('屋内スポーツのラジオボタンが見つかりません');
+        }
       });
 
-      // POSTリクエストを送信
-      await this.page.setRequestInterception(true);
-      this.page.once('request', (interceptedRequest) => {
-        interceptedRequest.continue({
-          method: 'POST',
-          postData: formData.toString(),
-          headers: {
-            ...interceptedRequest.headers(),
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-        });
-      });
-
-      await this.page.goto(ENDPOINTS.FACILITY_AVAILABILITY, {
-        waitUntil: 'networkidle0',
+      // AJAXでスポーツ種目が読み込まれるまで待機
+      await this.page.waitForSelector('#checkPurposeMiddle505', {
         timeout: 30000,
       });
 
-      await this.page.setRequestInterception(false);
-
-      console.log('✅ 施設別空き状況ページへのアクセス完了');
-    } catch (error) {
-      throw new DirectApiError(
-        '施設別空き状況ページへのPOSTリクエストに失敗しました',
-        error
+      // 要素が実際に表示されるまで待機
+      await this.page.waitForFunction(
+        () => {
+          const checkbox = document.querySelector('#checkPurposeMiddle505');
+          if (!checkbox) return false;
+          const parent = checkbox.parentElement;
+          if (!parent) return false;
+          const display = window.getComputedStyle(parent).display;
+          return display !== 'none';
+        },
+        { timeout: 30000 }
       );
+
+      // DOMが完全に更新されるまで追加で待機
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // バスケットボールとミニバスケットボールを選択
+      await this.page.evaluate(() => {
+        const checkbox505 = document.querySelector('#checkPurposeMiddle505') as HTMLInputElement;
+        const checkbox510 = document.querySelector('#checkPurposeMiddle510') as HTMLInputElement;
+
+        if (!checkbox505 || !checkbox510) {
+          throw new Error('バスケットボールのチェックボックスが見つかりません');
+        }
+
+        checkbox505.checked = true;
+        checkbox510.checked = true;
+
+        // changeイベントを発火
+        const changeEvent = new Event('change', { bubbles: true });
+        checkbox505.dispatchEvent(changeEvent);
+        checkbox510.dispatchEvent(changeEvent);
+
+        // clickイベントも発火
+        const clickEvent = new Event('click', { bubbles: true });
+        checkbox505.dispatchEvent(clickEvent);
+        checkbox510.dispatchEvent(clickEvent);
+      });
+
+      // 選択が反映されるまで待機
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // 選択されたことを確認
+      const isSelected = await this.page.evaluate(() => {
+        const checkbox505 = document.querySelector('#checkPurposeMiddle505') as HTMLInputElement;
+        const checkbox510 = document.querySelector('#checkPurposeMiddle510') as HTMLInputElement;
+        return checkbox505?.checked && checkbox510?.checked;
+      });
+
+      if (!isSelected) {
+        throw new Error('チェックボックスの選択に失敗しました');
+      }
+
+      console.log('✅ スポーツ種目の選択完了');
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`スポーツ種目の選択に失敗しました: ${error.message}`);
+      }
+      throw new Error('スポーツ種目の選択に失敗しました');
     }
   }
 
   /**
-   * 日付を選択して時間帯別空き状況データを取得
-   *
-   * 施設別空き状況ページから特定の日付を選択し、
-   * 時間帯別空き状況ページへ遷移してデータを取得します。
-   *
-   * @param date - 取得対象の日付
-   * @returns 施設の空き状況データ配列
-   * @throws {DirectApiError} データ取得に失敗した場合
+   * Step 2b: 施設検索実行（レガシーモード）
    */
-  async selectDateAndFetchTimeSlots(
-    date: Date
-  ): Promise<FacilityAvailability[]> {
+  private async searchFacilities(): Promise<void> {
     try {
-      const dateStr = format(date, 'yyyy年M月d日');
-      const targetDateString = format(date, 'yyyyMMdd');
-      console.log(`📊 ${dateStr} の時間帯別データを取得中...`);
+      console.log('📍 Step 2b: 施設検索を実行中...');
 
-      // 対象日付のチェックボックスを全選択
-      const result = await this.page.evaluate((targetDate: string) => {
-        const checkboxes = Array.from(
-          document.querySelectorAll('input[type="checkbox"][name="checkdate"]')
-        ) as HTMLInputElement[];
+      // チェックボックスが選択されているか確認
+      const checkboxState = await this.page.evaluate(() => {
+        const middleList = document.getElementsByName('checkPurposeMiddle');
+        const checkedValues: string[] = [];
+        for (let i = 0; i < middleList.length; i++) {
+          if ((middleList[i] as HTMLInputElement).checked) {
+            checkedValues.push((middleList[i] as HTMLInputElement).value);
+          }
+        }
+        return {
+          radioSelected: (document.querySelector('input[name="radioPurposeLarge"]:checked') as HTMLInputElement)?.value,
+          checkboxCount: checkedValues.length,
+          checkboxValues: checkedValues,
+        };
+      });
 
-        let count = 0;
-        const selectedDates: string[] = [];
+      if (checkboxState.checkboxCount === 0) {
+        throw new Error('チェックボックスが選択されていません');
+      }
 
+      // ページ遷移の待機をセットアップ
+      const navigationPromise = this.page.waitForNavigation({
+        waitUntil: 'networkidle0',
+        timeout: 30000,
+      });
+
+      // searchMokuteki()関数を直接呼び出す
+      await this.page.evaluate(() => {
+        if (typeof (window as any).searchMokuteki === 'function') {
+          (window as any).searchMokuteki();
+        } else {
+          throw new Error('searchMokuteki関数が見つかりません');
+        }
+      });
+
+      // ページ遷移を待つ
+      await navigationPromise;
+
+      // エラーダイアログが表示されていないか確認
+      const errorMessage = await this.page.evaluate(() => {
+        const dlg = document.querySelector('#messageDlg');
+        if (dlg && window.getComputedStyle(dlg).display !== 'none') {
+          const messageEl = dlg.querySelector('div p');
+          return messageEl?.textContent || '';
+        }
+        return null;
+      });
+
+      if (errorMessage) {
+        throw new Error(`検索に失敗しました: ${errorMessage}`);
+      }
+
+      console.log('✅ 施設検索完了');
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`施設検索に失敗しました: ${error.message}`);
+      }
+      throw new Error('施設検索に失敗しました');
+    }
+  }
+
+  /**
+   * Step 2c: 全施設を選択してナビゲート（レガシーモード）
+   */
+  /**
+   * Step 2c: 全施設を選択してナビゲート（APIモード）
+   */
+  private async selectAllFacilitiesAndNavigate(): Promise<void> {
+    try {
+      console.log('📍 Step 2c: 全施設を選択中（APIモード）...');
+
+      // 現在のページからデータを抽出
+      const pageData = await this.page.evaluate(() => {
+        // CSRFトークンを取得
+        const tokenInput = document.querySelector<HTMLInputElement>(
+          'input[name="__RequestVerificationToken"]'
+        );
+        const token = tokenInput?.value || '';
+
+        // map_* フィールドを全て取得
+        const mapFields: Record<string, string> = {};
+        const mapInputs = document.querySelectorAll<HTMLInputElement>(
+          'input[type="hidden"][name^="map_"]'
+        );
+        mapInputs.forEach((input) => {
+          mapFields[input.name] = input.value;
+        });
+
+        // 施設IDを全て取得
+        const facilityIds: string[] = [];
+        const checkboxes = document.querySelectorAll<HTMLInputElement>(
+          'input[type="checkbox"][name="checkShisetsu"]'
+        );
         checkboxes.forEach((checkbox) => {
-          // valueの最初の8文字が日付（YYYYMMDD）
-          const checkboxDate = checkbox.value.substring(0, 8);
+          facilityIds.push(checkbox.value);
+        });
 
-          if (checkboxDate === targetDate) {
-            // 対応するlabelを取得
-            const label = document.querySelector(
-              `label[for="${checkbox.id}"]`
-            ) as HTMLElement;
+        return { token, mapFields, facilityIds };
+      });
 
-            if (label) {
-              const status = label.textContent?.trim();
+      console.log(`✅ ${pageData.facilityIds.length}件の施設を検出`);
 
-              // ○（空きあり）、△（一部空き）、－（当日など）を選択
-              // ×（空きなし）、休（休館日）は選択しない
-              if (status === '○' || status === '△' || status === '－') {
-                // チェックボックスが選択されていない場合のみクリック
-                if (!checkbox.checked) {
-                  label.click();
-                  count++;
-                  selectedDates.push(checkboxDate);
-                }
-              }
-            }
+      // POSTパラメータを構築
+      const formData = new URLSearchParams();
+      formData.append('__RequestVerificationToken', pageData.token);
+      formData.append('__EVENTTARGET', 'next');
+      formData.append('__EVENTARGUMENT', '');
+
+      // map_* フィールドを全て追加
+      Object.entries(pageData.mapFields).forEach(([name, value]) => {
+        formData.append(name, value);
+      });
+
+      // 全施設IDを追加
+      pageData.facilityIds.forEach((id) => {
+        formData.append('checkShisetsu', id);
+      });
+
+      formData.append('HyojiMode', 'filterAll');
+
+      console.log('📍 施設別空き状況ページへPOST送信中...');
+
+      // page.evaluate内でフォームを作成して送信
+      await this.page.evaluate((formDataString: string) => {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = 'https://www.11489.jp/Umi/web/Yoyaku/WgR_ShisetsuKensaku';
+
+        // URLSearchParamsから個々のフィールドを作成
+        const params = new URLSearchParams(formDataString);
+        params.forEach((value, key) => {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = key;
+          input.value = value;
+          form.appendChild(input);
+        });
+
+        document.body.appendChild(form);
+        form.submit();
+      }, formData.toString());
+
+      // ナビゲーション完了を待機
+      await this.page.waitForNavigation({ 
+        waitUntil: 'domcontentloaded', 
+        timeout: 60000 
+      });
+
+      // URLの確認
+      const currentUrl = this.page.url();
+      if (!currentUrl.includes('WgR_ShisetsubetsuAkiJoukyou')) {
+        throw new Error(`予期しないページに遷移しました: ${currentUrl}`);
+      }
+
+      console.log('✅ 施設別空き状況ページへ遷移完了（APIモード）');
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`施設選択とナビゲーションに失敗しました: ${error.message}`);
+      }
+      throw new Error('施設選択とナビゲーションに失敗しました');
+    }
+  }
+
+  /**
+   * メインフロー実行
+   * ハイブリッドアプローチ: レガシーモードで施設検索まで実行し、
+   * その後は既存のメソッドを使用
+   */
+  async execute(): Promise<any> {
+    try {
+      await this.initBrowser();
+
+      // Step 1: 検索ページへナビゲート（レガシーモード）
+      await this.navigateToSearchPage();
+
+      // Step 2a: スポーツ選択（レガシーモード）
+      await this.selectSports();
+
+      // Step 2b: 施設検索（レガシーモード）
+      await this.searchFacilities();
+
+      // Step 2c: 全施設を選択してナビゲート（APIモード - 直接POST）
+      await this.selectAllFacilitiesAndNavigate();
+
+      // この時点で施設別空き状況ページにいる
+      // pageオブジェクトを返してFacilityScraperの既存メソッドで処理を続ける
+      return {
+        page: this.page,
+        browser: this.browser,
+      };
+    } catch (error) {
+      await this.closeBrowser();
+      throw error;
+    }
+  }
+
+  /**
+   * Step 3: 日付を選択して時間帯別空き状況ページへ遷移（APIモード）
+   * @param targetDate 選択したい日付
+   */
+  async selectDateAndNavigate(targetDate: Date): Promise<void> {
+    try {
+      const { format } = await import('date-fns');
+      const dateStr = format(targetDate, 'yyyyMMdd');
+      
+      console.log(`📍 Step 3: 日付を選択中（APIモード - ${format(targetDate, 'yyyy-MM-dd')}）...`);
+
+      // 現在のページからデータを抽出
+      const pageData = await this.page.evaluate((targetDateStr: string) => {
+        // CSRFトークンを取得
+        const tokenInput = document.querySelector<HTMLInputElement>(
+          'input[name="__RequestVerificationToken"]'
+        );
+        const token = tokenInput?.value || '';
+
+        // textDate（表示期間の開始日）を取得
+        const textDateInput = document.querySelector<HTMLInputElement>(
+          'input[name="textDate"]'
+        );
+        const textDate = textDateInput?.value || '';
+
+        // 対象日付のcheckdateを全て取得
+        const checkdates: string[] = [];
+        const checkboxes = document.querySelectorAll<HTMLInputElement>(
+          'input[type="checkbox"][name="checkdate"]'
+        );
+        
+        checkboxes.forEach((checkbox) => {
+          // value形式: "YYYYMMDD施設コード   フラグ"
+          // 例: "2025120900701   0"
+          if (checkbox.value.startsWith(targetDateStr)) {
+            checkdates.push(checkbox.value);
           }
         });
 
-        return { count, selectedDates };
-      }, targetDateString);
+        return { token, textDate, checkdates };
+      }, dateStr);
 
-      if (result.count === 0) {
-        console.log(
-          `⚠️  ${dateStr} は選択可能な施設がありません（全て×、－、または休の可能性があります）`
-        );
-        return []; // この日付はスキップ
+      if (pageData.checkdates.length === 0) {
+        throw new Error(`日付 ${dateStr} に対応するチェックボックスが見つかりません`);
       }
 
-      console.log(`✅ ${result.count}個のチェックボックスを選択しました`);
+      console.log(`✅ ${pageData.checkdates.length}個の日付チェックボックスを検出`);
 
-      // DOM更新を待機
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // POSTパラメータを構築
+      const formData = new URLSearchParams();
+      formData.append('__RequestVerificationToken', pageData.token);
+      formData.append('__EVENTTARGET', 'next');
+      formData.append('__EVENTARGUMENT', '');
+      formData.append('textDate', pageData.textDate);
+      formData.append('radioPeriod', '2週間');
+      formData.append('radioDisplay', 'false');
+      formData.append('radioJikan', 'all');
+      
+      // 選択した日付のチェックボックスを全て追加
+      pageData.checkdates.forEach((checkdate) => {
+        formData.append('checkdate', checkdate);
+      });
+      
+      formData.append('staydate', '');
+      formData.append('hyoujiOpenCloseFlg', 'close');
 
-      // 「次へ進む」ボタンをクリックして時間帯別空き状況ページへ遷移
-      console.log('📍 時間帯別空き状況ページへ遷移中...');
+      console.log('📍 時間帯別空き状況ページへPOST送信中...');
 
-      await Promise.all([
-        this.page.waitForNavigation({
-          waitUntil: 'domcontentloaded',
-          timeout: 60000,
-        }),
-        this.page.click('.navbar .next > a'),
-      ]);
+      // page.evaluate内でフォームを作成して送信
+      await this.page.evaluate((formDataString: string) => {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = 'https://www.11489.jp/Umi/web/Yoyaku/WgR_ShisetsubetsuAkiJoukyou';
+
+        // URLSearchParamsから個々のフィールドを作成
+        const params = new URLSearchParams(formDataString);
+        params.forEach((value, key) => {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = key;
+          input.value = value;
+          form.appendChild(input);
+        });
+
+        document.body.appendChild(form);
+        form.submit();
+      }, formData.toString());
+
+      // ナビゲーション完了を待機
+      await this.page.waitForNavigation({ 
+        waitUntil: 'domcontentloaded', 
+        timeout: 60000 
+      });
 
       // URLの確認
       const currentUrl = this.page.url();
       if (!currentUrl.includes('WgR_JikantaibetsuAkiJoukyou')) {
-        throw new DirectApiError(
-          `予期しないページに遷移しました: ${currentUrl}`
-        );
+        throw new Error(`予期しないページに遷移しました: ${currentUrl}`);
       }
 
-      console.log('✅ 時間帯別空き状況ページへ遷移完了');
-
-      // 時間帯別データをスクレイピング
-      const facilities = await this.scrapeTimeSlotData([date]);
-
-      console.log(`✅ ${dateStr} のデータ取得完了`);
-
-      return facilities;
+      console.log('✅ 時間帯別空き状況ページへ遷移完了（APIモード）');
     } catch (error) {
-      throw new DirectApiError(
-        `日付 ${format(date, 'yyyy-MM-dd')} のデータ取得に失敗しました`,
-        error
-      );
+      if (error instanceof Error) {
+        throw new Error(`日付選択とナビゲーションに失敗しました: ${error.message}`);
+      }
+      throw new Error('日付選択とナビゲーションに失敗しました');
     }
   }
 
   /**
-   * 時間帯別空き状況ページからデータをスクレイピング
-   *
-   * @param dates - 取得対象の日付配列
-   * @returns 施設の空き状況データ配列
-   * @private
+   * ブラウザを外部から取得するためのgetter
    */
-  private async scrapeTimeSlotData(
-    dates: Date[]
-  ): Promise<FacilityAvailability[]> {
-    // カレンダーが表示されるまで待機
-    await this.page.waitForSelector('.item .calendar', { timeout: 30000 });
-
-    // 全施設のデータを取得
-    const facilitiesData = await this.page.evaluate((targetDates: string[]) => {
-      const items = Array.from(document.querySelectorAll('.item'));
-
-      return items.map((item) => {
-        // 施設名を取得
-        const facilityNameElement = item.querySelector('h3');
-        const facilityName = facilityNameElement?.textContent?.trim() || '';
-
-        // この施設内のすべてのカレンダーテーブルを取得
-        const calendars = Array.from(
-          item.querySelectorAll('.calendar')
-        ) as HTMLTableElement[];
-
-        // 各カレンダーからデータを抽出
-        const dateAvailability = calendars
-          .map((calendar) => {
-            // 日付ヘッダーから日付を取得
-            const dateHeader = calendar.querySelector('thead th.shisetsu');
-            const dateText = dateHeader?.textContent?.trim() || '';
-
-            // "2025年12月10日(水)" のような形式から日付を抽出
-            const dateMatch = dateText.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
-            if (!dateMatch) {
-              return null;
-            }
-
-            const [_, year, month, day] = dateMatch;
-            const dateStr = `${year}-${month.padStart(2, '0')}-${day.padStart(
-              2,
-              '0'
-            )}`;
-
-            // この日付が対象日付に含まれているか確認
-            if (!targetDates.includes(dateStr)) {
-              return null;
-            }
-
-            // 時間帯のヘッダーを取得（"8:30～9:00"のような形式）
-            const timeHeaders = Array.from(
-              calendar.querySelectorAll('thead th')
-            ).slice(2); // 最初の2つは「日付」と「定員」なのでスキップ
-
-            // tbody の行を取得（各行が1つのコートまたは区分）
-            const rows = Array.from(calendar.querySelectorAll('tbody tr'));
-
-            // 各行のコート名を取得
-            const courtNames = rows.map((row) => {
-              const firstCell = row.querySelector('td.shisetsu');
-              return firstCell?.textContent?.trim() || '';
-            });
-
-            // 時間帯データを取得（コートごとの詳細情報を含む）
-            const slots = timeHeaders.map((th, timeIndex) => {
-              const timeText = th.textContent?.trim() || '';
-              // "8:30～9:00" を "8:30-9:00" に変換
-              const time = timeText.replace('～', '-').replace(/\s/g, '');
-
-              // 各コートの空き状況を取得
-              const courts = rows.map((row, rowIndex) => {
-                const cells = Array.from(row.querySelectorAll('td'));
-                // 最初の2つは施設名と定員なのでスキップ
-                const cell = cells[timeIndex + 2];
-                const label = cell?.querySelector('label');
-                const status = label?.textContent?.trim() || '';
-
-                return {
-                  name: courtNames[rowIndex],
-                  available: status === '○',
-                };
-              });
-
-              // 空き状況を判定
-              const availableCourts = courts.filter((c) => c.available).length;
-              const totalCourts = courts.length;
-
-              let availabilityStatus:
-                | 'all-available'
-                | 'partially-available'
-                | 'unavailable';
-              if (availableCourts === 0) {
-                availabilityStatus = 'unavailable';
-              } else if (availableCourts === totalCourts) {
-                availabilityStatus = 'all-available';
-              } else {
-                availabilityStatus = 'partially-available';
-              }
-
-              return {
-                time,
-                available: availableCourts > 0,
-                status: availabilityStatus,
-                courts,
-              };
-            });
-
-            return {
-              date: dateStr,
-              slots,
-            };
-          })
-          .filter(Boolean);
-
-        return {
-          facilityName,
-          dateAvailability,
-        };
-      });
-    }, dates.map((d) => format(d, 'yyyy-MM-dd')));
-
-    // データを FacilityAvailability[] 形式に変換
-    const results: FacilityAvailability[] = facilitiesData
-      .filter((data: any): data is NonNullable<typeof data> => data !== null)
-      .map((data: any, index: number) => {
-        const facility: Facility = {
-          id: `facility-${index}`,
-          name: data.facilityName,
-          type: 'basketball',
-        };
-
-        // 日付ごとにデータをグループ化
-        const availability: AvailabilityData[] = data.dateAvailability
-          .filter((d: any): d is NonNullable<typeof d> => d !== null)
-          .map((dateData: any) => ({
-            date: new Date(dateData.date),
-            slots: dateData.slots,
-          }));
-
-        return {
-          facility,
-          availability,
-        };
-      });
-
-    console.log(`✅ ${results.length}施設のデータを取得しました`);
-
-    return results;
+  getPage() {
+    return this.page;
   }
 
-  /**
-   * キャッシュをクリア
-   *
-   * トークンキャッシュをクリアします。
-   * 新しいスクレイピングセッションを開始する前に呼び出すことを推奨します。
-   */
-  clearCache(): void {
-    this.cachedToken = null;
-  }
-
-  /**
-   * エラーハンドリング用のヘルパーメソッド
-   *
-   * エラーが発生した際に詳細情報をログ出力します。
-   *
-   * @param error - キャッチしたエラー
-   * @param context - エラーが発生したコンテキスト
-   */
-  private logError(error: unknown, context: string): void {
-    console.error(`❌ DirectApiClient エラー [${context}]:`, error);
+  getBrowser() {
+    return this.browser;
   }
 }
