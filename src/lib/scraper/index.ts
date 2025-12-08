@@ -200,7 +200,7 @@ export class FacilityScraper {
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
       logStep('施設検索実行', true);
-      this.reportProgress('施設検索実行', 10);
+      this.reportProgress('施設検索実行', 14);
       const { page, browser } = await apiClient.execute();
       logStep('施設検索実行', false);
 
@@ -212,7 +212,7 @@ export class FacilityScraper {
 
       console.log('\n✅ 施設別空き状況ページへの遷移完了');
       console.log('📍 Phase 2: 日付ごとに処理（APIモード + 既存メソッド）');
-      this.reportProgress('施設カレンダー取得完了', 20);
+      this.reportProgress('施設カレンダー取得完了', 28);
 
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       // 日付ごとにループして処理
@@ -221,8 +221,10 @@ export class FacilityScraper {
 
       for (let i = 0; i < dates.length; i++) {
         const currentDate = dates[i];
-        const progress = 20 + (60 * (i / dates.length));
-        
+        // 28% から 99% の範囲を日数で均等配分（実際の処理時間の71%を反映）
+        const dateProcessingRange = 71; // 99 - 28
+        const progress = 28 + (dateProcessingRange * (i / dates.length));
+
         console.log(`\n📍 [${i + 1}/${dates.length}] ${format(currentDate, 'yyyy-MM-dd')} の処理開始`);
         this.reportProgress(`日付処理 ${i + 1}/${dates.length}`, progress, currentDate);
 
@@ -267,7 +269,7 @@ export class FacilityScraper {
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       console.log('\n📍 複数日のデータをマージ中...');
       logStep('データマージ', true);
-      this.reportProgress('データマージ', 90);
+      this.reportProgress('データマージ', 99);
       const mergedResults = this.mergeFacilityData(allResults);
       logStep('データマージ', false);
 
@@ -360,14 +362,9 @@ export class FacilityScraper {
     progress: number,
     currentDate?: Date
   ): void {
-    console.log('[reportProgress] Called:', step, progress, 'hasCallback:', !!this.options.progressCallback); // デバッグログ
     try {
       if (this.options.progressCallback) {
-        console.log('[reportProgress] Calling progressCallback...'); // デバッグログ
         this.options.progressCallback(step, progress, currentDate);
-        console.log('[reportProgress] progressCallback completed'); // デバッグログ
-      } else {
-        console.log('[reportProgress] No progressCallback defined'); // デバッグログ
       }
     } catch (error) {
       // コールバックエラーはスクレイピング処理を中断させない
