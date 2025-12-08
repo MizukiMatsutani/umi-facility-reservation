@@ -930,7 +930,7 @@ export class FacilityScraper {
       await Promise.all([
         page.waitForFunction(
           () => document.querySelectorAll('input[type="checkbox"][name="checkdate"]').length > 0,
-          { timeout: 60000 }
+          { timeout: 30000 } // 60秒 → 30秒に短縮（通常5-7秒で完了するため）
         ),
         page.click('.navbar .prev > a'),
       ]);

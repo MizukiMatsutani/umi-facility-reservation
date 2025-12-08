@@ -160,6 +160,18 @@ class BrowserManager {
     const browser = await this.initializeBrowser();
     const page = await browser.newPage();
 
+    // 不要なリソース読み込みをスキップして高速化
+    await page.setRequestInterception(true);
+    page.on('request', (request: any) => {
+      const resourceType = request.resourceType();
+      // 画像、CSS、フォントをスキップ（JavaScriptとHTMLのみ読み込む）
+      if (['image', 'stylesheet', 'font'].includes(resourceType)) {
+        request.abort();
+      } else {
+        request.continue();
+      }
+    });
+
     // ダイアログを自動的に受け入れる
     page.on('dialog', async (dialog: any) => {
       console.log('ダイアログ検出:', dialog.message());
