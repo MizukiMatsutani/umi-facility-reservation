@@ -19,6 +19,7 @@ import type {
 import { format } from 'date-fns';
 import { ENDPOINTS } from './constants';
 import * as cheerio from 'cheerio';
+import { browserManager } from './BrowserManager';
 
 /**
  * 直接API呼び出しのエラークラス
@@ -44,12 +45,10 @@ export class DirectApiError extends Error {
  * - Step 3-4: 既存のメソッドを活用（日付選択と空き状況取得）
  */
 export class DirectApiClient {
-  private browser: any;
   private page: any;
   private stepTimes: Map<string, number>;
 
   constructor() {
-    this.browser = null;
     this.page = null;
     this.stepTimes = new Map();
   }
@@ -74,75 +73,27 @@ export class DirectApiClient {
   }
 
   /**
-   * ブラウザを初期化
-   */
-  /**
-   * ブラウザを初期化
+   * ブラウザを初期化（グローバルブラウザマネージャーを使用）
    */
   async initBrowser(): Promise<void> {
     this.startTimer('ブラウザ初期化');
-    
-    // 本番環境（Vercel/Render.com等）では@sparticuz/chromiumを使用
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true' || process.env.VERCEL === '1';
 
-    if (isProduction) {
-      const chromium = await import('@sparticuz/chromium');
-      const puppeteer = await import('puppeteer-core');
+    // グローバルブラウザマネージャーから新しいページを取得
+    this.page = await browserManager.createPage();
 
-      // Brotli圧縮ファイルの問題を回避するため、リモートからChromiumをダウンロード
-      const executablePath = await chromium.default.executablePath();
-
-      this.browser = await puppeteer.default.launch({
-        args: [
-          ...chromium.default.args,
-          '--disable-gpu',
-          '--disable-dev-shm-usage',
-          '--disable-setuid-sandbox',
-          '--no-sandbox',
-          '--single-process',
-        ],
-        defaultViewport: chromium.default.defaultViewport,
-        executablePath,
-        headless: chromium.default.headless,
-      });
-    } else {
-      // ローカル環境では通常のpuppeteerを使用
-      const puppeteer = await import('puppeteer');
-
-      this.browser = await puppeteer.default.launch({
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-gpu',
-        ],
-      });
-    }
-
-    this.page = await this.browser.newPage();
-
-    // ダイアログを自動的に受け入れる
-    this.page.on('dialog', async (dialog: any) => {
-      console.log('ダイアログ検出:', dialog.message());
-      await dialog.accept();
-    });
-
-    // User-Agent設定
-    await this.page.setUserAgent(
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    );
-    
     this.endTimer('ブラウザ初期化');
   }
 
   /**
-   * ブラウザをクリーンアップ
+   * ページをクリーンアップ（ブラウザは閉じない - グローバルマネージャーが管理）
    */
   async closeBrowser(): Promise<void> {
-    if (this.browser) {
-      await this.browser.close();
-      this.browser = null;
+    if (this.page) {
+      try {
+        await this.page.close();
+      } catch (error) {
+        console.error('⚠️  ページクローズエラー:', error);
+      }
       this.page = null;
     }
   }
@@ -468,10 +419,10 @@ export class DirectApiClient {
       await this.selectAllFacilitiesAndNavigate();
 
       // この時点で施設別空き状況ページにいる
-      // pageオブジェクトを返してFacilityScraperの既存メソッドで処理を続ける
+      // pageオブジェクトとグローバルブラウザを返してFacilityScraperの既存メソッドで処理を続ける
       return {
         page: this.page,
-        browser: this.browser,
+        browser: await browserManager.initializeBrowser(),
       };
     } catch (error) {
       await this.closeBrowser();
@@ -570,10 +521,11 @@ export class DirectApiClient {
       }, formData.toString());
 
       // ナビゲーション完了を待機
-      await this.page.waitForNavigation({ 
-        waitUntil: 'domcontentloaded', 
-        timeout: 60000 
-      });
+      // 最適化: 重い domcontentloaded ではなく、時間帯別空き状況ページのカレンダーが表示されるまで待機
+      await this.page.waitForFunction(
+        () => document.querySelector('.item .calendar') !== null,
+        { timeout: 60000 }
+      );
 
       // URLの確認
       const currentUrl = this.page.url();
@@ -598,7 +550,8 @@ export class DirectApiClient {
     return this.page;
   }
 
-  getBrowser() {
-    return this.browser;
+  async getBrowser() {
+    // グローバルブラウザマネージャーからブラウザインスタンスを取得
+    return await browserManager.initializeBrowser();
   }
 }

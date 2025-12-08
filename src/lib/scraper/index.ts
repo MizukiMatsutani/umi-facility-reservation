@@ -14,6 +14,7 @@ import type {
 } from '@/lib/types';
 import type { ScraperOptions } from './types';
 import { parseFacilities, parseAvailability } from './parser';
+import { browserManager } from './BrowserManager';
 
 /**
  * 宇美町施設予約システムのスクレイピングクラス
@@ -315,43 +316,8 @@ export class FacilityScraper {
    * --no-sandbox と --disable-setuid-sandbox はサーバーレス環境で必要な設定です。
    */
   async initBrowser(): Promise<void> {
-    // 本番環境（Render.com等）では@sparticuz/chromiumを使用
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
-
-    if (isProduction) {
-      const chromium = await import('@sparticuz/chromium');
-      const puppeteer = await import('puppeteer-core');
-
-      // Brotli圧縮ファイルの問題を回避するため、リモートからChromiumをダウンロード
-      const executablePath = await chromium.default.executablePath();
-
-      this.browser = await puppeteer.default.launch({
-        args: [
-          ...chromium.default.args,
-          '--disable-gpu',
-          '--disable-dev-shm-usage',
-          '--disable-setuid-sandbox',
-          '--no-sandbox',
-          '--single-process',
-        ],
-        defaultViewport: chromium.default.defaultViewport,
-        executablePath,
-        headless: chromium.default.headless,
-      });
-    } else {
-      // ローカル環境では通常のpuppeteerを使用
-      const puppeteer = await import('puppeteer');
-
-      this.browser = await puppeteer.default.launch({
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-gpu',
-        ],
-      });
-    }
+    // グローバルブラウザマネージャーを使用してブラウザを初期化
+    this.browser = await browserManager.initializeBrowser();
   }
 
   /**
@@ -410,15 +376,14 @@ export class FacilityScraper {
   }
 
   /**
-   * ブラウザのクローズ
+   * ブラウザのクローズ（実際には閉じない - グローバルマネージャーが管理）
    *
-   * ブラウザインスタンスが存在する場合にクローズし、nullに設定します。
+   * グローバルブラウザマネージャーを使用しているため、ブラウザは閉じずに
+   * インスタンス参照のみをnullに設定します。
    */
   async closeBrowser(): Promise<void> {
-    if (this.browser) {
-      await this.browser.close();
-      this.browser = null;
-    }
+    // グローバルマネージャーがブラウザを管理するため、ここでは閉じない
+    this.browser = null;
   }
 
   /**
@@ -964,8 +929,12 @@ export class FacilityScraper {
       console.log('📍 時間帯別空き状況ページから施設別空き状況ページへ戻る...');
 
       // 「前に戻る」ボタンをクリック
+      // 最適化: 重い domcontentloaded ではなく、次のページの日付チェックボックスが表示されるまで待機
       await Promise.all([
-        page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 60000 }),
+        page.waitForFunction(
+          () => document.querySelectorAll('input[type="checkbox"][name="checkdate"]').length > 0,
+          { timeout: 60000 }
+        ),
         page.click('.navbar .prev > a'),
       ]);
 

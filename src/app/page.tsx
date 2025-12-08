@@ -26,6 +26,14 @@ export default function Home() {
   const toast = useToast();
   const eventSourceRef = useRef<EventSource | null>(null);
 
+  // ブラウザのウォームアップ（バックグラウンドで事前起動）
+  useEffect(() => {
+    // バックグラウンドでブラウザを起動（エラーは無視）
+    fetch('/api/warmup', { method: 'POST' }).catch((error) => {
+      console.log('ブラウザウォームアップをリクエストしました（完了を待たずに処理を続行）');
+    });
+  }, []);
+
   // コンポーネントのクリーンアップ時にEventSourceを閉じる
   useEffect(() => {
     return () => {

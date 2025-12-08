@@ -248,7 +248,7 @@ export default function SearchForm({
         onConfirm={handleDialogConfirm}
         onCancel={handleDialogCancel}
         title="検索に時間がかかります"
-        message="複数日を検索する場合、30秒〜1分程度お時間をいただく場合があります。検索を続けますか？"
+        message="複数日を検索する場合、1分〜2分程度お時間をいただく場合があります。検索を続けますか？"
         confirmText="検索を続ける"
         cancelText="キャンセル"
       />
