@@ -33,6 +33,9 @@ export class FacilityScraper {
     reportProgress: options.reportProgress ?? false,
     fallbackOnError: options.fallbackOnError ?? true,
     progressCallback: options.progressCallback,  // コールバックを追加
+    parallelMode: options.parallelMode ?? false,  // 並列処理モード
+    parallelDegree: options.parallelDegree ?? 2,  // 並列度
+    batchDelay: options.batchDelay ?? 2000,  // バッチ間遅延
   };
 }
 
@@ -46,8 +49,41 @@ export class FacilityScraper {
   async scrapeFacilities(
     dates: Date[]
   ): Promise<FacilityAvailability[]> {
-    // 新しい4ステップPOSTフローを使用（デフォルト）
-    return this.scrapeFacilitiesDirectMode(dates);
+    // 並列処理モードが有効な場合
+    if (this.options.parallelMode && this.options.useDirectApi) {
+      try {
+        console.log('🔀 並列処理モードで実行します');
+        return await this.scrapeFacilitiesParallelMode(dates);
+      } catch (error) {
+        if (this.options.fallbackOnError) {
+          console.error('❌ 並列処理モードでエラーが発生しました:', error);
+          console.log('🔄 直接APIモード（順次実行）にフォールバックします');
+          // 直接APIモード（順次実行）にフォールバック
+        } else {
+          throw error;
+        }
+      }
+    }
+
+    // 直接APIモードが有効な場合（順次実行）
+    if (this.options.useDirectApi) {
+      try {
+        console.log('🔀 直接APIモード（順次実行）で実行します');
+        return await this.scrapeFacilitiesDirectMode(dates);
+      } catch (error) {
+        if (this.options.fallbackOnError) {
+          console.error('❌ 直接APIモードでエラーが発生しました:', error);
+          console.log('🔄 レガシーモードにフォールバックします');
+          // レガシーモードにフォールバック
+        } else {
+          throw error;
+        }
+      }
+    }
+
+    // レガシーモード
+    console.log('🔀 レガシーモードで実行します');
+    return await this.scrapeFacilitiesLegacyMode(dates);
   }
 
   /**
@@ -307,6 +343,150 @@ export class FacilityScraper {
       // ブラウザは必ずクリーンアップ
       console.log('\n🧹 ブラウザをクリーンアップ中...');
       await this.closeBrowser();
+      console.log('✅ クリーンアップ完了');
+    }
+  }
+
+  /**
+   * 並列処理モードでスクレイピング実行（最高速版）
+   *
+   * 複数のブラウザコンテキストを使用して日付を並列処理します。
+   * 2-3並列を推奨（サーバー負荷とパフォーマンスのバランス）
+   *
+   * @param dates - 検索対象の日付配列
+   * @returns 施設の空き状況データ配列
+   */
+  private async scrapeFacilitiesParallelMode(
+    dates: Date[]
+  ): Promise<FacilityAvailability[]> {
+    const startTime = Date.now();
+
+    // 並列度とバッチ遅延のデフォルト値を設定
+    const parallelDegree = this.options.parallelDegree ?? 2;
+    const batchDelay = this.options.batchDelay ?? 2000;
+
+    // 並列度の検証
+    if (parallelDegree < 1 || parallelDegree > 5) {
+      throw new Error(`並列度は1〜5の範囲で指定してください（指定値: ${parallelDegree}）`);
+    }
+
+    console.log('🚀 スクレイピング開始: 並列処理モード');
+    console.log(`   並列度: ${parallelDegree}`);
+    console.log(`   バッチ間遅延: ${batchDelay}ms`);
+    console.log(`📅 対象日数: ${dates.length}日`);
+
+    const { ParallelBrowserManager } = await import('./ParallelBrowserManager');
+    const { batchDates } = await import('./utils/batchDates');
+
+    const browserManager = new ParallelBrowserManager({
+      enableResourceBlocking: this.options.enableResourceBlocking ?? true,
+    });
+
+    try {
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // Phase 1: ブラウザと複数コンテキストを初期化
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('📍 Phase 1: 並列処理環境の初期化');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+      await browserManager.initBrowser();
+      await browserManager.createContexts(parallelDegree);
+
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // Phase 2: 日付をバッチに分割
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      const dateBatches = batchDates(dates, parallelDegree);
+      console.log(`\n📦 日付を${dateBatches.length}個のバッチに分割しました`);
+      dateBatches.forEach((batch, i) => {
+        console.log(`  バッチ${i + 1}: ${batch.length}日`);
+      });
+
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // Phase 3: バッチごとに並列処理を実行
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('📍 Phase 2: バッチごとの並列処理');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+      const allResults: FacilityAvailability[] = [];
+
+      for (let batchIndex = 0; batchIndex < dateBatches.length; batchIndex++) {
+        const batch = dateBatches[batchIndex];
+        const batchStartTime = Date.now();
+
+        console.log(`\n🔄 バッチ${batchIndex + 1}/${dateBatches.length}を処理中 (${batch.length}日)`);
+
+        // バッチ内の日付を並列処理
+        const batchTasks = batch.map(async (date, index) => {
+          const contextIndex = index % parallelDegree;
+
+          console.log(`  📅 [Context ${contextIndex}] ${format(date, 'yyyy-MM-dd')} 開始`);
+
+          try {
+            // 各コンテキストで独立したDirectApiClientを作成
+            const { DirectApiClient } = await import('./DirectApiClient');
+            const apiClient = new DirectApiClient();
+
+            // 施設検索を実行（このメソッドは内部でブラウザを初期化します）
+            const { page, browser } = await apiClient.execute();
+
+            // ブラウザの一時参照を保存（クリーンアップ用）
+            // 注意: 並列処理では各DirectApiClientが独自のブラウザを管理します
+
+            // 日付を選択して時間帯別空き状況を取得
+            await apiClient.selectDateAndNavigate(date);
+            const results = await this.scrapeTimeSlots(page, [date]);
+
+            console.log(`  ✅ [Context ${contextIndex}] ${format(date, 'yyyy-MM-dd')} 完了`);
+
+            return results;
+          } catch (error) {
+            console.error(`  ❌ [Context ${contextIndex}] ${format(date, 'yyyy-MM-dd')} エラー:`, error);
+            throw error;
+          }
+        });
+
+        // バッチ内のすべてのタスクを並列実行
+        const batchResults = await Promise.all(batchTasks);
+
+        // 結果を統合
+        for (const results of batchResults) {
+          allResults.push(...results);
+        }
+
+        const batchDuration = ((Date.now() - batchStartTime) / 1000).toFixed(1);
+        console.log(`✓ バッチ${batchIndex + 1}完了 (${batchDuration}秒)`);
+
+        // 最後のバッチ以外では、バッチ間遅延を挿入
+        if (batchIndex < dateBatches.length - 1 && batchDelay > 0) {
+          console.log(`⏸️  サーバー負荷軽減のため${batchDelay}ms待機中...`);
+          await new Promise((resolve) => setTimeout(resolve, batchDelay));
+        }
+      }
+
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // Phase 4: 複数日のデータをマージ
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      console.log('\n📍 複数日のデータをマージ中...');
+      const mergedResults = this.mergeFacilityData(allResults);
+
+      const totalDuration = ((Date.now() - startTime) / 1000).toFixed(1);
+      console.log(`\n✅ 並列処理モード完了: ${mergedResults.length}施設`);
+      console.log(`⏱️  合計所要時間: ${totalDuration}秒`);
+      console.log(`🚀 並列度${parallelDegree}による高速化達成`);
+
+      return mergedResults;
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error('❌ 並列処理モードエラー:', error.message);
+        throw new Error(`並列処理モードでのスクレイピングに失敗しました: ${error.message}`);
+      }
+      throw new Error('並列処理モードでのスクレイピングに失敗しました');
+    } finally {
+      // すべてのコンテキストとブラウザをクリーンアップ
+      console.log('\n🧹 並列処理環境をクリーンアップ中...');
+      await browserManager.closeBrowser();
       console.log('✅ クリーンアップ完了');
     }
   }

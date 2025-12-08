@@ -62,4 +62,43 @@ export interface ScraperOptions {
    * @default undefined
    */
   progressCallback?: ProgressCallback;
+
+  /**
+   * 並列処理モードを使用するかどうか
+   *
+   * - true: 複数のブラウザコンテキストを使用して日付を並列処理
+   * - false: 日付を順次処理（デフォルト）
+   *
+   * 注意: useDirectApi=trueの場合のみ有効です
+   * 推奨並列度: 2-3（parallelDegreeで設定）
+   *
+   * @default false
+   */
+  parallelMode?: boolean;
+
+  /**
+   * 並列処理の並列度（同時実行するコンテキスト数）
+   *
+   * - 1: 順次実行（並列化なし）
+   * - 2: 推奨設定（バランスの取れた高速化）
+   * - 3: 最大推奨値（さらなる高速化、サーバー負荷に注意）
+   * - 4以上: 非推奨（サーバー過負荷のリスク）
+   *
+   * @default 2
+   */
+  parallelDegree?: number;
+
+  /**
+   * バッチ間の遅延時間（ミリ秒）
+   *
+   * 並列処理時、各バッチの実行間に挿入する待機時間です。
+   * サーバー負荷を軽減するために使用します。
+   *
+   * - 0: 遅延なし（非推奨、サーバー負荷が高い）
+   * - 2000: 推奨設定（2秒）
+   * - 5000以上: 高速化のメリットが減少
+   *
+   * @default 2000
+   */
+  batchDelay?: number;
 }
