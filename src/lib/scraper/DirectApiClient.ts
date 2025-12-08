@@ -55,12 +55,48 @@ export class DirectApiClient {
   /**
    * ブラウザを初期化
    */
+  /**
+   * ブラウザを初期化
+   */
   async initBrowser(): Promise<void> {
-    const puppeteer = await import('puppeteer');
-    this.browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    });
+    // 本番環境（Vercel/Render.com等）では@sparticuz/chromiumを使用
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true' || process.env.VERCEL === '1';
+
+    if (isProduction) {
+      const chromium = await import('@sparticuz/chromium');
+      const puppeteer = await import('puppeteer-core');
+
+      // Brotli圧縮ファイルの問題を回避するため、リモートからChromiumをダウンロード
+      const executablePath = await chromium.default.executablePath();
+
+      this.browser = await puppeteer.default.launch({
+        args: [
+          ...chromium.default.args,
+          '--disable-gpu',
+          '--disable-dev-shm-usage',
+          '--disable-setuid-sandbox',
+          '--no-sandbox',
+          '--single-process',
+        ],
+        defaultViewport: chromium.default.defaultViewport,
+        executablePath,
+        headless: chromium.default.headless,
+      });
+    } else {
+      // ローカル環境では通常のpuppeteerを使用
+      const puppeteer = await import('puppeteer');
+
+      this.browser = await puppeteer.default.launch({
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+        ],
+      });
+    }
+
     this.page = await this.browser.newPage();
 
     // ダイアログを自動的に受け入れる
