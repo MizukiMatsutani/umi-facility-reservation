@@ -1,0 +1,30 @@
+{
+  "filePath": ".spec-workflow/specs/search-performance-optimization/requirements.md",
+  "currentVersion": 3,
+  "snapshots": [
+    {
+      "version": 1,
+      "filename": "snapshot-001.json",
+      "timestamp": "2025-12-08T06:48:38.412Z",
+      "trigger": "initial",
+      "approvalId": "approval_1765176518355_w7vzxiyai",
+      "approvalTitle": "要件定義書 (Requirements) - 検索速度最適化"
+    },
+    {
+      "version": 2,
+      "filename": "snapshot-002.json",
+      "timestamp": "2025-12-08T06:52:06.403Z",
+      "trigger": "approved",
+      "approvalId": "approval_1765176518355_w7vzxiyai",
+      "approvalTitle": "要件定義書 (Requirements) - 検索速度最適化"
+    },
+    {
+      "version": 3,
+      "filename": "snapshot-003.json",
+      "timestamp": "2025-12-08T07:10:45.665Z",
+      "trigger": "approved",
+      "approvalId": "approval_1765177819059_bdyiv8l2n",
+      "approvalTitle": "修正版 要件定義書＆設計書 - 直接API呼び出しアプローチ追加"
+    }
+  ]
+}
