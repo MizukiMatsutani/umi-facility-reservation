@@ -213,9 +213,9 @@
   - _Prompt: Role: DevOpsエンジニア | Task: mainブランチにプッシュして自動デプロイを実行。デプロイ完了後、本番環境で複数日検索をテストし、所要時間とエラーログを確認。直接APIモードが失敗した場合のフォールバック動作も検証。 | Restrictions: 本番環境でのテストは慎重に実施、エラー発生時は即座にロールバック | Success: 本番環境で7日検索が20〜40秒で完了し、エラーなく動作する_
   - _Status: コミット完了。安定性向上とログ機能改善を実装。pushは保留（ユーザー指示による）_
 
-## Phase 7: 並列処理による更なる高速化（将来実装）
+## Phase 7: 並列処理による更なる高速化
 
-- [-] 23. 並列処理の設計と実装方針の策定
+- [x] 23. 並列処理の設計と実装方針の策定
   - File: docs/parallel-processing-design.md (新規作成)
   - 2-3並列処理のアーキテクチャ設計
   - リスク評価とサーバー負荷への影響分析
@@ -226,7 +226,7 @@
   - _Context: フェーズ1で15%削減達成。さらに40-50%の高速化が見込まれる並列処理を安全に実装するための設計_
   - _Prompt: Role: システムアーキテクト | Task: 7日間検索の並列処理アーキテクチャを設計。(1)複数ブラウザコンテキストの並列実行、(2)2-3並列の推奨並列度、(3)サーバー負荷軽減のためのバッチ間遅延(2秒)、(4)エラーハンドリングと部分失敗時のリトライ戦略を含む設計書を作成。7並列は高リスクとして却下理由を明記。 | Restrictions: 公共システムへの過負荷を避ける、既存の直接APIモードと共存可能な設計 | Success: 実装ガイドとして使用可能な詳細設計書が完成_
 
-- [-] 24. 並列処理用のBrowserContextマネージャーを実装
+- [x] 24. 並列処理用のBrowserContextマネージャーを実装
   - File: src/lib/scraper/ParallelBrowserManager.ts (新規作成)
   - 複数のブラウザコンテキストを管理するクラスを作成
   - コンテキストプールの初期化と再利用機能
@@ -237,7 +237,7 @@
   - _Context: 現在は単一ページで順次処理。複数コンテキストで並列処理するための管理層を追加_
   - _Prompt: Role: Puppeteer並列処理に精通した開発者 | Task: ParallelBrowserManagerクラスを作成。browser.createIncognitoBrowserContext()で並列度分のコンテキストを生成し、各コンテキストでページを作成・管理。リソースブロッキングとエラーハンドリングを実装。 | Restrictions: コンテキスト数は設定可能（デフォルト2）、各コンテキストは独立したセッションを持つ | Success: 複数コンテキストが正常に動作し、互いに干渉しない_
 
-- [-] 25. 日付をバッチに分割する関数を実装
+- [x] 25. 日付をバッチに分割する関数を実装
   - File: src/lib/scraper/utils/batchDates.ts (新規作成)
   - 日付配列を並列度に応じてバッチに分割
   - 各バッチに遅延時間を設定可能にする
@@ -247,7 +247,7 @@
   - _Context: 7日分の日付を2-3並列で処理するため、[日付1,2], [日付3,4], [日付5,6], [日付7]のようにグループ化_
   - _Prompt: Role: アルゴリズム設計に精通した開発者 | Task: 日付配列とバッチサイズを受け取り、配列を均等に分割する関数batchDates(dates: Date[], batchSize: number): Date[][]を実装。バッチ間の遅延時間も設定可能なオプションを追加。 | Restrictions: バッチサイズが日付数より大きい場合は1バッチにまとめる | Success: 7日分が2並列の場合、4バッチ（2+2+2+1）に正しく分割される_
 
-- [-] 26. scrapeFacilitiesParallelMode メソッドを実装
+- [x] 26. scrapeFacilitiesParallelMode メソッドを実装
   - File: src/lib/scraper/index.ts
   - ParallelBrowserManagerを使用して複数コンテキストで並列処理
   - 日付をバッチに分割し、各バッチを並列実行
@@ -258,7 +258,7 @@
   - _Context: 現在の直接APIモード（75秒）をさらに高速化。2並列で約45秒、3並列で約30秒を目標_
   - _Prompt: Role: 並列処理とエラーハンドリングに精通した開発者 | Task: FacilityScraper.scrapeFacilitiesParallelModeメソッドを実装。(1)ParallelBrowserManagerで複数コンテキストを初期化、(2)日付をバッチ分割、(3)Promise.allで各バッチを並列実行、(4)バッチ間に2秒遅延、(5)全結果をマージして返す。各コンテキストでDirectApiClientを使用。 | Restrictions: 並列度は2-3（デフォルト2）、エラー時は部分的にリトライ | Success: 7日検索が2並列で約45秒、3並列で約30秒で完了_
 
-- [-] 27. ScraperOptionsに並列処理フラグを追加
+- [x] 27. ScraperOptionsに並列処理フラグを追加
   - File: src/lib/scraper/types.ts
   - parallelMode?: boolean (デフォルト false)
   - parallelDegree?: number (デフォルト 2、最大3)
@@ -269,7 +269,7 @@
   - _Context: useDirectApi=trueに加えて、並列処理を有効化するための新しいフラグ_
   - _Prompt: Role: TypeScript型設計に精通した開発者 | Task: ScraperOptionsインターフェースに並列処理関連のフラグ3つを追加。parallelMode（並列処理の有効化）、parallelDegree（並列度2-3）、batchDelay（バッチ間遅延ms）。JSDocで推奨値と注意事項を記載。 | Restrictions: 既存オプションとの互換性を維持、オプショナルプロパティ | Success: 型定義が正しくエクスポートされ、ドキュメントが明確_
 
-- [-] 28. scrapeFacilities メソッドに並列モード分岐を追加
+- [x] 28. scrapeFacilities メソッドに並列モード分岐を追加
   - File: src/lib/scraper/index.ts
   - ScraperOptions.parallelMode=trueの場合、scrapeFacilitiesParallelModeを呼び出す
   - 並列モードでエラーが発生した場合、直接APIモードにフォールバック
