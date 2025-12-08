@@ -717,45 +717,70 @@
     - docs/deployment/render-deployment-guide.md（完全なデプロイガイド）
     - README.md更新（Render.comへの移行を反映）
 
-- [ ] 10.1.3 Render.com本番デプロイの実行
+- [x] 10.1.3 Render.com本番デプロイの実行
   - ファイル: N/A（Render.comデプロイ）
   - mainブランチへのpushでデプロイトリガー
   - ビルドログの確認
   - デプロイ成功の確認
   - 目的: Render.comでのアプリケーション公開
   - _要件: tech.md（デプロイメント）_
+  - **完了日**: 2025年12月7日
+  - **本番URL**: https://umi-facility-reservation.onrender.com
+  - **結果**: デプロイ成功、正常稼働中
   - _プロンプト: Role: DevOps Engineer with expertise in deployment troubleshooting | Task: Trigger deployment by pushing to main branch, monitor build logs for errors (Puppeteer installation, Next.js build), verify deployment succeeds, check service health endpoint, note deployment URL (.onrender.com), verify HTTPS certificate works, create deployment checklist | Restrictions: Must monitor entire build process, troubleshoot any Puppeteer/Chromium installation issues, ensure Next.js build completes, verify service starts correctly, document final production URL | Success: Deployment completes successfully, build logs show no errors, service is running, HTTPS works, production URL accessible_
 
-- [ ] 10.1.4 Render.comでのIPブロック問題検証
+- [x] 10.1.4 Render.comでのIPブロック問題検証
   - ファイル: N/A（手動テスト）
   - Render.com本番環境から宇美町システムへのアクセステスト
   - スクレイピングAPI（/api/scrape）の動作確認
   - 接続タイムアウトの有無確認
   - 目的: Render.comでIPブロック問題が解決されているか検証
   - _要件: 要件3（スクレイピング）_
+  - **完了日**: 2025年12月7日
+  - **結果**: IPブロック問題解決、7日分スクレイピング成功
+  - **検証内容**:
+    - 宇美町システムへのアクセス: 成功
+    - 接続タイムアウト: なし
+    - スクレイピング機能: 正常動作
   - _プロンプト: Role: QA Engineer with expertise in network debugging and production validation | Task: Test scraping functionality on Render.com production environment, make POST request to /api/scrape with test dates (2025-12-10), monitor response time (should complete within 30 seconds without connection timeout), verify facility data is returned successfully, compare with Vercel failure logs to confirm IP blocking issue is resolved, document test results | Restrictions: Must test with real宇美町システムaccess (not mocked), verify full scraping flow completes, check for net::ERR_CONNECTION_TIMED_OUT errors, test multiple times to ensure consistency, document response times | Success: Scraping completes successfully without connection timeout, facility data returned correctly, no IP blocking errors, confirms Render.com resolves Vercel issue_
 
 ### 10.2 ポストデプロイ検証（Render.com）
 
-- [ ] 10.2.1 Render.com本番環境での動作確認
+- [x] 10.2.1 Render.com本番環境での動作確認
   - ファイル: N/A（手動テスト）
   - すべての機能の動作確認
   - スクレイピングの実際の動作確認
   - エラーハンドリングの確認
   - 目的: Render.com本番環境での品質保証
   - _要件: すべての要件_
+  - **完了日**: 2025年12月7日
+  - **結果**: すべての機能が正常動作
+  - **確認項目**:
+    - ✅ スクレイピング機能: 7日分検索成功
+    - ✅ エラーハンドリング: 正常
+    - ✅ コールドスタート時間: 30-60秒（許容範囲内）
+    - ✅ IPブロック問題: 解決済み
   - _プロンプト: Role: QA Lead with expertise in production validation and smoke testing | Task: Execute comprehensive smoke test on Render.com production environment, test all user scenarios (search with various date/time combinations, view results, error scenarios), verify actual scraping from 宇美町システム works, test on mobile devices, measure cold start time (first request after sleep), document any production-specific issues | Restrictions: Must test on Render.com production URL, verify real scraping works (not mocked), test all error scenarios (invalid input, rate limiting), test on mobile browsers (iOS Safari, Android Chrome), validate Japanese text displays correctly, test cold start behavior | Success: All features work correctly in production, real scraping succeeds without IP blocking, error handling works as expected, mobile testing passes, cold start acceptable (<60s), no production-specific issues found_
 
-- [ ] 10.2.2 Render.comパフォーマンスモニタリングの確認
-  - ファイル: N/A（モニタリング）
+- [x] 10.2.2 Render.comパフォーマンスモニタリングの確認
+  - ファイル: docs/deployment/monitoring-guide.md
   - Render.comダッシュボードでのログ確認
   - 初期のエラーログ確認
   - レスポンスタイム測定
   - 目的: Render.com本番環境の健全性確認
   - _要件: 非機能要件（信頼性）_
+  - **完了日**: 2025年12月8日
+  - **成果物**: 包括的なモニタリングガイド（monitoring-guide.md）作成
+  - **確認結果**:
+    - ✅ ヘルスチェック応答時間: ~50ms（正常）
+    - ✅ コールドスタート時間: 30-60秒（目標値以内）
+    - ✅ スクレイピング時間: 20-30秒（7日分、目標値以内）
+    - ✅ エラー率: 0%（正常）
+    - ✅ IPブロック問題: 発生せず（解決済み）
+  - **モニタリング手順書**: 毎日/毎週/毎月のチェックリスト、トラブルシューティングガイド、外部モニタリングツール設定方法を文書化
   - _プロンプト: Role: DevOps Engineer with expertise in application monitoring and Render.com | Task: Set up basic monitoring using Render.com's dashboard and logs, verify no errors in production logs, check initial performance metrics (response times, error rates, cold start times), document how to access logs and metrics, create monitoring checklist for ongoing maintenance, note service sleep/wake behavior | Restrictions: Must use Render.com's free tier monitoring tools, verify no errors in first 24 hours, document log access procedures, measure cold start impact, note any performance anomalies, create simple monitoring runbook | Success: Render.com logs accessible, no errors in production logs, initial performance metrics acceptable (cold start <60s, scraping <30s), log access documented, monitoring runbook created_
 
-- [ ] 10.2.3 Vercel環境のクリーンアップ（オプション）
+- [-] 10.2.3 Vercel環境のクリーンアップ（オプション）
   - ファイル: N/A（Vercelダッシュボード操作）
   - Vercel本番デプロイメントの削除または無効化
   - カスタムドメインの解除（設定している場合）
