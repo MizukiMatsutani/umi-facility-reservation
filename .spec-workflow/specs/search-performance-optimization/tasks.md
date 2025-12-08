@@ -59,7 +59,7 @@
 
 ## Phase 2: フォールバック機能とモード切り替え
 
-- [ ] 7. scrapeFacilitiesLegacyMode メソッドにリファクタリング
+- [x] 7. scrapeFacilitiesLegacyMode メソッドにリファクタリング
   - File: src/lib/scraper/index.ts
   - 既存のscrapeFacilitiesメソッドの実装をscrapeFacilitiesLegacyModeに移動
   - メソッド名変更のみで、ロジックは変更しない
@@ -68,7 +68,7 @@
   - _Requirements: 1.6_
   - _Prompt: Role: リファクタリングに精通したTypeScript開発者 | Task: FacilityScraper.scrapeFacilitiesメソッドの実装を新しいprivateメソッドscrapeFacilitiesLegacyModeに移動。元のメソッド名を変更し、内部ロジックは一切変更しない。 | Restrictions: 機能を変更しない、既存テストが壊れないよう注意 | Success: リファクタリング後も既存の動作が完全に維持される_
 
-- [ ] 8. scrapeFacilities メソッドにモード切り替えロジックを実装
+- [x] 8. scrapeFacilities メソッドにモード切り替えロジックを実装
   - File: src/lib/scraper/index.ts
   - ScraperOptionsを受け取り、useDirectApi フラグに応じてモードを切り替え
   - 直接APIモードでエラーが発生した場合、fallbackOnErrorがtrueならレガシーモードにフォールバック
@@ -77,7 +77,7 @@
   - _Requirements: 1.6_
   - _Prompt: Role: エラーハンドリングとフォールバック機能に精通した開発者 | Task: scrapeFacilitiesメソッドを再実装し、ScraperOptions.useDirectApi（デフォルトtrue）に応じてscrapeFacilitiesDirectModeまたはscrapeFacilitiesLegacyModeを呼び出す。直接APIモードで例外が発生し、fallbackOnError=trueの場合はレガシーモードを実行。コンソールに切り替えログを出力。 | Restrictions: 両モードで同じ型の結果を返す、例外は適切に伝播 | Success: 直接APIモード失敗時にレガシーモードへ自動フォールバックし、エラーログが出力される_
 
-- [ ] 9. ScraperOptions インターフェースを拡張
+- [x] 9. ScraperOptions インターフェースを拡張
   - File: src/lib/scraper/types.ts (または該当する型定義ファイル)
   - useDirectApi, enableResourceBlocking, reportProgress, fallbackOnError フラグを追加
   - デフォルト値をドキュメント化
@@ -88,7 +88,7 @@
 
 ## Phase 3: 補助的な最適化機能
 
-- [ ] 10. リソースブロッキング機能を実装
+- [-] 10. リソースブロッキング機能を実装
   - File: src/lib/scraper/index.ts
   - page.setRequestInterception(true) を有効化
   - 画像・CSS・フォントのリクエストをabort()、HTML・JavaScript・XHRはcontinue()

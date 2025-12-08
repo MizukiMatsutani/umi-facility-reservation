@@ -1,0 +1,29 @@
+{
+  "totalSteps": 4,
+  "steps": [
+    {
+      "stepNumber": 1,
+      "stepName": "mode_select",
+      "url": "https://www.11489.jp/Umi/web/Home/WgR_ModeSelect",
+      "hasPostData": false
+    },
+    {
+      "stepNumber": 2,
+      "stepName": "facility_search",
+      "url": "https://www.11489.jp/Umi/web/Yoyaku/WgR_ShisetsuKensaku",
+      "hasPostData": true
+    },
+    {
+      "stepNumber": 3,
+      "stepName": "facility_availability",
+      "url": "https://www.11489.jp/Umi/web/Yoyaku/WgR_ShisetsubetsuAkiJoukyou",
+      "hasPostData": true
+    },
+    {
+      "stepNumber": 4,
+      "stepName": "timeslot_availability",
+      "url": "https://www.11489.jp/Umi/web/Yoyaku/WgR_JikantaibetsuAkiJoukyou",
+      "hasPostData": true
+    }
+  ]
+}
