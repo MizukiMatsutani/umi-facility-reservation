@@ -463,6 +463,203 @@ interface StepMetric {
   - 最適化による節約時間: 115.7秒
 ```
 
+## Phase 8: 段階的レンダリング（Progressive Rendering）
+
+**実装完了日**: 2025-12-09
+
+### 概要
+
+Phase 8では、SSE（Server-Sent Events）を活用した段階的レンダリング機能を実装し、ユーザー体験を大幅に向上させました。従来は全検索完了を待ってから結果を表示していましたが、日付ごとの処理完了時に部分的な結果をリアルタイムで配信・表示することで、体感速度を劇的に改善しました。
+
+### 達成効果
+
+| 指標 | 改善前 | 改善後 | 改善率 |
+|------|--------|--------|--------|
+| 初回データ表示 | 30秒以降 | 4.6秒 | **85%短縮** |
+| 体感速度 | 非常に遅い | 快適 | **大幅改善** |
+| データ可用性 | 最後のみ | 段階的に利用可能 | **UX向上** |
+
+### アーキテクチャ拡張
+
+#### SSEストリーミングフロー
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Frontend as ResultsPage
+    participant API as /api/scrape
+    participant Scraper as FacilityScraper
+
+    User->>Frontend: 検索開始
+    Frontend->>API: SSE接続確立
+    Frontend->>Frontend: /resultsへ即座に遷移
+
+    loop 各日付の処理
+        Scraper->>Scraper: 日付Xのデータ取得
+        Scraper->>API: partialResultCallback呼び出し
+        API->>Frontend: partial-result イベント送信
+        Frontend->>Frontend: カードを段階的に追加
+        Frontend->>User: プログレス表示更新
+    end
+
+    Scraper->>API: 全処理完了
+    API->>Frontend: complete イベント送信
+    Frontend->>User: 完了通知表示
+```
+
+#### コンポーネント拡張
+
+##### 1. SSEイベント定義（API側）
+
+```typescript
+// src/app/api/scrape/route.ts
+type SSEEvent =
+  | { type: 'progress'; message: string }
+  | { type: 'partial-result'; date: string; facilities: FacilityAvailability[] }
+  | { type: 'complete'; facilities: FacilityAvailability[] }
+  | { type: 'error'; error: string };
+```
+
+##### 2. 部分結果コールバック（Scraper側）
+
+```typescript
+// src/lib/scraper/index.ts
+interface ScraperOptions {
+  // 既存オプション...
+  partialResultCallback?: (date: string, facilities: FacilityAvailability[]) => void;
+}
+
+class FacilityScraper {
+  private async scrapeFacilitiesDirectMode(dates: Date[]): Promise<FacilityAvailability[]> {
+    // 各日付の処理完了時にコールバック呼び出し
+    for (const date of dates) {
+      const result = await this.fetchDateData(date);
+      if (this.options.partialResultCallback) {
+        this.options.partialResultCallback(format(date, 'yyyy-MM-dd'), result);
+      }
+    }
+  }
+}
+```
+
+##### 3. フロントエンド段階的レンダリング
+
+```typescript
+// src/app/results/page.tsx
+function ResultsPage() {
+  const [facilities, setFacilities] = useState<FacilityAvailability[]>([]);
+  const [progress, setProgress] = useState({ current: 0, total: 0 });
+
+  useEffect(() => {
+    const eventSource = new EventSource('/api/scrape?stream=true&...');
+
+    eventSource.addEventListener('partial-result', (e) => {
+      const { date, facilities: newFacilities } = JSON.parse(e.data);
+      setFacilities(prev => mergeFacilities(prev, newFacilities));
+      setProgress(prev => ({ ...prev, current: prev.current + 1 }));
+    });
+
+    return () => eventSource.close();
+  }, []);
+}
+```
+
+### 実装された主要機能
+
+#### 1. スケルトンスクリーン（Skeleton Screens）
+
+- 初回ローディング時に期待感を演出
+- 検索結果の構造をプレビュー表示
+- ユーザーが何を待っているか明確化
+
+#### 2. アニメーション効果
+
+```css
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.facility-card {
+  animation: fadeInUp 0.3s ease;
+}
+```
+
+#### 3. リアルタイムプログレス表示
+
+- 「取得済み: X/Y日」の明確な進捗表示
+- 視覚的なプログレスバー
+- 各日付のデータ取得時に即座に更新
+
+#### 4. スティッキーヘッダーとフッター
+
+- 検索条件と操作ボタンを常に表示
+- スクロール位置に関わらず操作可能
+- 完了通知の明確な表示
+
+### パフォーマンス指標
+
+#### テスト結果（7日検索）
+
+- **合計所要時間**: 32.2秒
+- **初回データ表示**: 4.6秒（Phase 1完了後）
+- **部分結果送信回数**: 6回（各日付ごと）
+- **SSEイベント総数**: 約15回（progress + partial-result + complete）
+
+#### ユーザー体験の向上
+
+1. **心理的待ち時間の短縮**: 4.6秒で最初のデータが表示されるため、30秒以上待つ必要がなくなった
+2. **進捗の可視化**: 「3/7日取得済み」などの表示により、残り時間が把握しやすい
+3. **データの早期利用**: 全検索完了を待たずに、取得済みデータを閲覧・利用可能
+
+### エラーハンドリング
+
+```typescript
+// SSE接続タイムアウト処理
+const TIMEOUT_MS = 180_000; // 3分
+
+eventSource.addEventListener('error', (error) => {
+  console.error('SSE接続エラー:', error);
+  // 取得済みデータは保持し、エラーメッセージを表示
+  setError('検索中にエラーが発生しました。取得済みのデータを表示します。');
+});
+
+setTimeout(() => {
+  if (!isComplete) {
+    eventSource.close();
+    setError('検索がタイムアウトしました。');
+  }
+}, TIMEOUT_MS);
+```
+
+### テスト戦略
+
+#### 実施されたテスト
+
+1. **SSEストリーミングの動作確認**
+   - DevToolsでイベント送信を監視
+   - partial-resultイベントが日付ごとに送信されることを確認
+
+2. **段階的レンダリングの検証**
+   - 各日付の処理完了時にカードが追加されることを確認
+   - アニメーション効果の動作を確認
+
+3. **エラーケースのテスト**
+   - 途中でブラウザバック: SSE接続が適切にクローズ
+   - タブクローズ: メモリリークなし
+   - ネットワークエラー: 取得済みデータを保持
+
+#### テストツール
+
+- `/tmp/test-progressive-rendering.html`: SSEイベント監視ツール
+- `/tmp/progressive-rendering-test-report.md`: 詳細テストレポート
+
 ## Implementation Notes
 
 ### 段階的な実装アプローチ
@@ -472,6 +669,7 @@ interface StepMetric {
 3. **Phase 3**: フォールバック機能を実装・テスト
 4. **Phase 4**: ResourceOptimizerとProgressIndicatorを追加
 5. **Phase 5**: E2Eテストとパフォーマンス計測
+6. **Phase 8**: SSEストリーミング + 段階的レンダリング（完了）
 
 ### リスク管理
 

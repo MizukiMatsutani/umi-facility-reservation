@@ -110,6 +110,50 @@ checkdate: 2025120900907+++0
 3. WHEN スクレイピング全体が完了する THEN システムは合計所要時間と各ステップの内訳をログに出力する SHALL
 4. WHEN ログを出力する THEN システムは日本語で分かりやすい形式で出力する SHALL
 
+### Requirement 6: 段階的レンダリング（Progressive Rendering）
+
+**User Story:** ユーザーとして、検索処理中に取得済みのデータをリアルタイムで閲覧したい。そうすることで、全検索完了を待たずにデータを確認でき、体感速度が大幅に改善される。
+
+**実装完了日**: 2025-12-09
+
+#### Acceptance Criteria
+
+1. WHEN 検索を開始する THEN システムは即座に結果ページ（/results）に遷移する SHALL
+2. WHEN 検索を開始する THEN システムはServer-Sent Events（SSE）接続を確立する SHALL
+3. WHEN 各日付の処理が完了する THEN システムは部分結果をSSE経由でリアルタイム送信する SHALL
+4. WHEN 部分結果を受信する THEN フロントエンドは段階的にカードを追加表示する SHALL
+5. WHEN 新しいカードを追加する THEN システムはフェードインアニメーション（animate-fade-in-up）を適用する SHALL
+6. WHEN データ取得中 THEN システムは「取得済み: X/Y日」のプログレス表示を更新する SHALL
+7. WHEN 初回ローディング時 THEN システムはスケルトンスクリーン（Skeleton Screens）を表示する SHALL
+8. WHEN スクロール中 THEN 検索条件ヘッダーとフッターボタンはスティッキー表示される SHALL
+9. WHEN 全検索が完了する THEN システムは完了通知を表示し、SSE接続を切断する SHALL
+10. IF SSE接続エラーが発生した場合 THEN システムは取得済みデータを保持し、エラーメッセージを表示する SHALL
+11. IF タブクローズやブラウザバック THEN システムはSSE接続を適切にクリーンアップする SHALL
+
+#### パフォーマンス指標
+
+- **初回データ表示**: 30秒以降 → 4.6秒（**85%短縮**）を達成する SHALL
+- **体感速度**: ユーザーが「非常に遅い」から「快適」と感じる改善を実現する SHALL
+- **データ可用性**: 全検索完了前に取得済みデータを閲覧可能にする SHALL
+
+#### 実装された主要コンポーネント
+
+1. **SSEストリーミング（API側）**
+   - イベントタイプ: `progress`, `partial-result`, `complete`, `error`
+   - 部分結果コールバック: `partialResultCallback(date, facilities)`
+   - タイムアウト: 180秒（3分）
+
+2. **段階的レンダリング（フロントエンド）**
+   - EventSource APIを使用したSSE接続
+   - 受信データのマージとステート更新
+   - リアルタイムプログレス表示
+
+3. **UX改善要素**
+   - スケルトンスクリーン: 初回ローディング時の期待感演出
+   - フェードインアニメーション: 新カード追加時の視覚効果
+   - スティッキーヘッダー/フッター: 常時操作可能
+   - 完了通知: 検索完了時の明確なフィードバック
+
 ## Non-Functional Requirements
 
 ### Code Architecture and Modularity
