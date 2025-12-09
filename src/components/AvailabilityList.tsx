@@ -43,13 +43,6 @@ export default function AvailabilityList({
 
   return (
     <div className="w-full">
-      {/* ヘッダー */}
-      {dateLabel && (
-        <div className="mb-3 text-sm font-medium text-gray-800">
-          {dateLabel}
-        </div>
-      )}
-
       {/* ガントチャート風テーブル */}
       <div className="overflow-x-auto rounded-lg border border-gray-300">
         <table className="w-full border-collapse">

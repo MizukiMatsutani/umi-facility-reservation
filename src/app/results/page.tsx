@@ -244,22 +244,22 @@ export default function ResultsPage() {
 
           {/* 検索条件の表示 */}
           {searchParams && (
-            <div className="rounded-xl bg-white/80 backdrop-blur-sm p-5 shadow-lg border border-blue-100 animate-slide-up">
-              <div className="flex items-center gap-2 mb-3">
-                <Calendar className="h-5 w-5 text-blue-600" />
-                <h2 className="text-sm font-semibold text-gray-900">検索条件</h2>
-              </div>
-              <div className="space-y-1 text-sm text-gray-700">
+            <div className="rounded-xl bg-white/80 backdrop-blur-sm p-4 shadow-lg border border-blue-100 animate-slide-up">
+              <div className="flex items-center justify-between gap-2 mb-2">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-gray-900">日付:</span>
-                  <span className="px-3 py-1 bg-blue-50 rounded-md text-blue-700 font-medium">
-                    {searchParams.dates.length === 1
-                      ? formatDate(searchParams.dates[0])
-                      : `${formatDate(searchParams.dates[0])} 〜 ${formatDate(
-                          searchParams.dates[searchParams.dates.length - 1]
-                        )} (${searchParams.dates.length}日間)`}
-                  </span>
+                  <Calendar className="h-4 w-4 text-blue-600" />
+                  <h2 className="text-xs font-semibold text-gray-900">検索条件</h2>
                 </div>
+                <span className="px-2 py-0.5 bg-gray-100 rounded text-gray-700 font-medium text-xs">
+                  全{searchParams.dates.length}日
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                {searchParams.dates.map((date, index) => (
+                  <span key={index} className="px-2 py-0.5 bg-blue-50 rounded text-blue-700 font-medium text-xs text-center">
+                    {formatDate(date)}
+                  </span>
+                ))}
               </div>
             </div>
           )}
@@ -298,7 +298,7 @@ export default function ResultsPage() {
         )}
 
         {/* 施設カード表示エリア */}
-        <div className="space-y-4">
+        <div>
           {/* ローディング中でデータがまだ0件の場合はスケルトンを表示 */}
           {isLoading && facilities.length === 0 && (
             <>
@@ -334,13 +334,10 @@ export default function ResultsPage() {
                 </h2>
               </div>
               {facilities.map((facility, index) => (
-                <div
+                <FacilityCard
                   key={facility.facility.id}
-                  className="animate-fade-in-up"
-                  style={{ animationDelay: `${index * 100}ms` }}
-                >
-                  <FacilityCard facilityAvailability={facility} />
-                </div>
+                  facilityAvailability={facility}
+                />
               ))}
             </>
           )}

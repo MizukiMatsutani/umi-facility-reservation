@@ -109,9 +109,9 @@ export default function FacilityCard({
   };
 
   return (
-    <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-      {/* 施設情報ヘッダー */}
-      <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
+    <div className="rounded-lg border border-gray-200 bg-white shadow-sm mb-4 animate-fade-in-up">
+      {/* 施設情報ヘッダー（スティッキー） */}
+      <div className="sticky top-0 z-20 border-b border-gray-200 bg-gray-50 px-4 py-3 shadow-sm rounded-t-lg">
         <h2 className="text-lg font-bold text-gray-900">{facility.name}</h2>
       </div>
 
@@ -142,61 +142,67 @@ export default function FacilityCard({
             const continuousSlots = calculateContinuousSlots(availData);
 
             return (
-              <div key={dateIso} className="px-4 py-3">
-                {/* 日付ヘッダーと展開/折りたたみボタン */}
-                <button
-                  type="button"
-                  onClick={() => toggleDate(dateIso)}
-                  className="flex w-full min-h-[44px] items-center justify-between gap-2 text-left transition-colors hover:bg-gray-50 active:bg-gray-100 rounded-md px-2 py-2"
-                  aria-expanded={isExpanded}
-                  aria-label={`${dateLabel}の空き状況を${isExpanded ? '折りたたむ' : '展開する'}`}
-                >
-                  <div className="flex-1">
-                    <div className="font-semibold text-gray-900">
-                      {dateLabel}
+              <div key={dateIso}>
+                {/* 日付ヘッダーと展開/折りたたみボタン（アコーディオン展開時のみスティッキー） */}
+                <div className={isExpanded ? "sticky top-[52px] z-10 bg-white shadow-sm" : ""}>
+                  <button
+                    type="button"
+                    onClick={() => toggleDate(dateIso)}
+                    className="flex w-full min-h-[44px] items-center justify-between gap-2 text-left transition-colors hover:bg-gray-50 active:bg-gray-100 px-4 py-3"
+                    aria-expanded={isExpanded}
+                    aria-label={`${dateLabel}の空き状況を${isExpanded ? '折りたたむ' : '展開する'}`}
+                  >
+                    <div className="flex-1">
+                      <div className="font-semibold text-gray-900">
+                        {dateLabel}
+                      </div>
+                      {/* 連続空き時間サマリ（折りたたみ時のみ表示） */}
+                      {!isExpanded && (
+                        <>
+                          {continuousSlots.length > 0 ? (
+                            <div className="mt-1 text-sm text-gray-600 space-y-0.5">
+                              {continuousSlots.map((courtSlot, index) => (
+                                <div key={index}>
+                                  {courtSlot.courtName}
+                                  <br />
+                                  <span className="ml-4">
+                                    {courtSlot.timeRanges.join('、')}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="mt-1 text-sm text-gray-500">
+                              空きなし
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
-                    {/* 連続空き時間サマリ */}
-                    {continuousSlots.length > 0 ? (
-                      <div className="mt-1 text-sm text-gray-600 space-y-0.5">
-                        {continuousSlots.map((courtSlot, index) => (
-                          <div key={index}>
-                            {courtSlot.courtName}
-                            <br />
-                            <span className="ml-4">
-                              {courtSlot.timeRanges.join('、')}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="mt-1 text-sm text-gray-500">
-                        空きなし
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-shrink-0">
-                    <svg
-                      className={`h-5 w-5 text-gray-400 transition-transform ${
-                        isExpanded ? 'rotate-180' : ''
-                      }`}
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      aria-hidden="true"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
-                  </div>
-                </button>
+                    <div className="flex-shrink-0">
+                      <svg
+                        className={`h-5 w-5 text-gray-400 transition-transform ${
+                          isExpanded ? 'rotate-180' : ''
+                        }`}
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        aria-hidden="true"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 9l-7 7-7-7"
+                        />
+                      </svg>
+                    </div>
+                  </button>
+                </div>
 
                 {/* 時間帯リスト（展開時のみ表示） */}
                 {isExpanded && (
-                  <div className="mt-3">
+                  <div className="px-4 pb-3">
                     <AvailabilityList
                       slots={availData.slots}
                       dateLabel={dateLabel}
