@@ -137,12 +137,29 @@ async function handleRequest(request: Request, isGet: boolean): Promise<NextResp
                 controller.enqueue(encoder.encode(message));
               };
 
+              // 部分結果コールバックを定義
+              const partialResultCallback = (date: string, facilities: any[]) => {
+                console.log(`📤 [SSE] 部分結果送信: ${date}, ${facilities.length}施設`);
+                const data = JSON.stringify({
+                  type: 'partial-result',
+                  date,
+                  facilities,
+                });
+                const message = `data: ${data}\n\n`;
+                controller.enqueue(encoder.encode(message));
+                console.log(`✅ [SSE] 部分結果エンキュー完了: ${date}`);
+              };
+
               // スクレイパーを実行
+              console.log('🔍 [API] スクレイパー初期化: partialResultCallback設定済み');
               const scraper = new FacilityScraper({
                 progressCallback,
+                partialResultCallback,
                 reportProgress: true,
               });
+              console.log('🚀 [API] スクレイピング開始');
               const facilities = await scraper.scrapeFacilities(dates);
+              console.log(`✅ [API] スクレイピング完了: ${facilities.length}施設`);
 
               // 最終結果を送信
               const resultData = JSON.stringify({

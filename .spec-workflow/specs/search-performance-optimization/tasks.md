@@ -212,3 +212,81 @@
   - _Requirements: All_
   - _Prompt: Role: DevOpsエンジニア | Task: mainブランチにプッシュして自動デプロイを実行。デプロイ完了後、本番環境で複数日検索をテストし、所要時間とエラーログを確認。直接APIモードが失敗した場合のフォールバック動作も検証。 | Restrictions: 本番環境でのテストは慎重に実施、エラー発生時は即座にロールバック | Success: 本番環境で7日検索が20〜40秒で完了し、エラーなく動作する_
   - _Status: コミット完了。安定性向上とログ機能改善を実装。pushは保留（ユーザー指示による）_
+
+## Phase 8: 段階的レンダリング（Progressive Rendering）
+
+- [x] 23. SSEイベントタイプに `partial-result` を追加
+  - File: src/app/api/scrape/route.ts
+  - 日付ごとの部分結果を送信する新しいイベントタイプを定義
+  - 各日付の処理完了時に施設データを送信
+  - Purpose: 検索結果を段階的にフロントエンドへ配信し、ユーザーが待ち時間中にデータを閲覧できるようにする
+  - _Leverage: 既存のSSEストリーミング実装（progress イベント）_
+  - _Requirements: UX向上、体感速度の改善_
+  - _Status: 実装完了。partial-resultイベントタイプを追加し、部分結果コールバックを統合。_
+
+- [x] 24. スクレイパーで日付ごとのコールバックを実装
+  - File: src/lib/scraper/index.ts
+  - 各日付の処理完了時に部分結果を返すコールバック機能を追加
+  - ScraperOptionsに `partialResultCallback?: (date: string, facilities: FacilityAvailability[]) => void` を追加
+  - Purpose: 日付ごとの処理完了を外部に通知し、SSEで逐次送信可能にする
+  - _Leverage: 既存のprogressCallback実装パターン_
+  - _Requirements: バックエンドとフロントエンドの連携_
+  - _Status: 実装完了。scrapeFacilitiesDirectModeメソッドで各日付処理完了時にpartialResultCallbackを呼び出し。_
+
+- [x] 25. page.tsx を検索開始時に /results へ即座に遷移するよう変更
+  - File: src/app/page.tsx
+  - 検索フォーム送信時、SSE接続を確立後すぐに /results ページへ遷移
+  - 検索パラメータをクエリパラメータまたはsessionStorageで渡す
+  - Purpose: ユーザーを待機画面から結果画面へ早期に移動させ、段階的にデータを表示
+  - _Leverage: 既存のhandleSubmit実装、Next.js router_
+  - _Requirements: UX向上_
+  - _Status: 実装完了。handleSubmitでsessionStorageに保存後、即座に/resultsへ遷移。_
+
+- [x] 26. results/page.tsx で段階的データ受信と表示を実装
+  - File: src/app/results/page.tsx
+  - SSE接続を確立し、partial-resultイベントを受信
+  - 受信した日付ごとのデータを既存のfacilities stateに追加
+  - 新しいデータが追加されるたびにアニメーション付きでカードを表示
+  - Purpose: 段階的レンダリングによりユーザー体験を大幅に向上
+  - _Leverage: 既存のResultsPageコンポーネント、EventSource API_
+  - _Requirements: UX向上、体感速度の改善_
+  - _Status: 実装完了。SSE接続確立、partial-resultイベント受信、データマージ、プログレス表示をすべて実装。_
+
+- [x] 27. アニメーションとプログレス表示の改善
+  - File: src/app/results/page.tsx, src/app/globals.css
+  - 新しいカードが追加される際のフェードインアニメーション
+  - 「取得済み: 3/7日」のようなプログレスインジケーター
+  - スケルトンローディングで期待感を演出
+  - Purpose: 視覚的フィードバックによりユーザー体験を向上
+  - _Leverage: CSS Transitions, Tailwind CSS animations_
+  - _Requirements: UX向上_
+  - _Status: 実装完了。animate-fade-in-upアニメーション追加、プログレス表示（取得済み日数/総日数）実装。_
+
+- [x] 28. 1日検索でも段階的レンダリングを適用
+  - File: src/app/page.tsx, src/app/api/scrape/route.ts
+  - 1日検索でも同様にSSEストリーミングを使用
+  - より一貫したUXを提供
+  - Purpose: すべての検索で統一されたユーザー体験を提供
+  - _Leverage: 既存のSSE実装_
+  - _Requirements: UX向上、コード一貫性_
+  - _Status: 実装完了。すべての検索でSSEストリーミングを使用し、/resultsページで段階的レンダリング。_
+
+- [x] 29. エラーハンドリングと接続タイムアウトの実装
+  - File: src/app/results/page.tsx
+  - SSE接続タイムアウト（例: 3分）を設定
+  - 接続エラー時のリトライ処理
+  - 部分的に取得したデータも表示し、エラーを通知
+  - Purpose: ネットワークエラーや長時間処理に対する堅牢性を確保
+  - _Leverage: EventSource error handling_
+  - _Requirements: 信頼性、エラーハンドリング_
+  - _Status: 実装完了。EventSource onerrorでエラーハンドリング、取得済みデータの表示、エラーメッセージ表示を実装。_
+
+- [ ] 30. 段階的レンダリングの動作確認とテスト
+  - Command: ローカル環境で7日検索を実行
+  - 各日付の処理完了時にカードが追加されることを確認
+  - プログレス表示とアニメーションの動作を検証
+  - エラーケース（途中でキャンセル、ネットワークエラー）をテスト
+  - Purpose: 段階的レンダリング機能が正しく動作することを保証
+  - _Leverage: ブラウザDevTools, Network tab_
+  - _Requirements: 品質保証_
+  - _Prompt: Role: QAエンジニア | Task: ローカル環境で複数日検索を実行し、SSEイベントがDevToolsで確認できることを検証。各partial-resultイベント受信時にカードが追加されることを確認。途中でブラウザバックやタブクローズを試し、エラーハンドリングをテスト。 | Restrictions: 実際の宇美町システムを使用してテスト | Success: 段階的レンダリングが正常に動作し、エラー時も適切に処理される_

@@ -63,136 +63,27 @@ export default function Home() {
       dates: params.dates.map((date) => format(date, 'yyyy-MM-dd')), // YYYY-MM-DD形式（ローカル時刻）
     };
 
-    // 複数日検索の場合はSSEストリーミングを使用
-    const useStreaming = params.dates.length > 1;
+    // すべての検索でSSEストリーミングを使用し、/resultsページへ遷移
+    try {
+      // 検索パラメータをsessionStorageに保存
+      sessionStorage.setItem('searchParams', JSON.stringify(params));
+      sessionStorage.setItem('searchDates', request.dates.join(','));
+      sessionStorage.setItem('searchStartTime', new Date().toISOString());
 
-    if (useStreaming) {
-      try {
-        // SSEストリーミングでプログレス情報を受信
-        const url = new URL('/api/scrape', window.location.origin);
-        url.searchParams.set('stream', 'true');
-
-        // POSTリクエストのデータをクエリパラメータに変換
-        url.searchParams.set('dates', request.dates.join(','));
-
-        const eventSource = new EventSource(url.toString());
-        eventSourceRef.current = eventSource;
-
-        eventSource.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            console.log('[SSE] 受信データ:', data); // デバッグログ
-
-            if (data.type === 'progress') {
-              // プログレス更新
-              console.log('[SSE] プログレス更新:', data.step, data.progress); // デバッグログ
-              setProgressState({
-                step: data.step,
-                progress: data.progress,
-                currentDate: data.currentDate ? new Date(data.currentDate) : undefined,
-              });
-            } else if (data.type === 'result') {
-              // 最終結果を受信
-              eventSource.close();
-              eventSourceRef.current = null;
-
-              // 成功トーストを表示
-              toast.success('施設情報を取得しました！', 3000);
-
-              // 結果データをセッションストレージに保存
-              sessionStorage.setItem('searchResults', JSON.stringify(data.facilities));
-              sessionStorage.setItem('searchParams', JSON.stringify(params));
-
-              // 結果ページにナビゲート
-              router.push('/results');
-            } else if (data.type === 'error') {
-              // エラー受信
-              eventSource.close();
-              eventSourceRef.current = null;
-
-              setError({
-                type: 'scraping',
-                message: data.message,
-              });
-              toast.error(data.message);
-              setIsLoading(false);
-            }
-          } catch (parseError) {
-            console.error('SSEデータのパースエラー:', parseError);
-          }
-        };
-
-        eventSource.onerror = () => {
-          eventSource.close();
-          eventSourceRef.current = null;
-
-          const errorMessage = 'リアルタイム通信中にエラーが発生しました';
-          setError({
-            type: 'network',
-            message: errorMessage,
-          });
-          toast.error(errorMessage);
-          setIsLoading(false);
-        };
-      } catch (err) {
-        console.error('SSE接続エラー:', err);
-        const errorMessage = '施設情報の取得に失敗しました。しばらく経ってから再度お試しください';
-        setError({
-          type: 'network',
-          message: errorMessage,
-        });
-        toast.error(errorMessage);
-        setIsLoading(false);
-      }
-    } else {
-      // 1日のみの検索の場合は従来通りのJSON API
-      try {
-        // /api/scrapeにPOSTリクエスト送信
-        const response = await fetch('/api/scrape', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(request),
-        });
-
-        // レスポンス処理
-        if (response.ok) {
-          // 成功時: 結果ページにナビゲート
-          const data: ScrapeResponse = await response.json();
-
-          // 成功トーストを表示
-          toast.success('施設情報を取得しました！', 3000);
-
-          // 結果データをセッションストレージに保存
-          sessionStorage.setItem('searchResults', JSON.stringify(data.facilities));
-          sessionStorage.setItem('searchParams', JSON.stringify(params));
-
-          // 結果ページにナビゲート
-          router.push('/results');
-        } else {
-          // エラー時: エラーメッセージを表示
-          const errorData: ErrorResponse = await response.json();
-          setError({
-            type: errorData.error,
-            message: errorData.message,
-          });
-          toast.error(errorData.message);
-        }
-      } catch (err) {
-        // ネットワークエラーなど予期しないエラーの処理
-        console.error('検索エラー:', err);
-        const errorMessage = '施設情報の取得に失敗しました。しばらく経ってから再度お試しください';
-        setError({
-          type: 'network',
-          message: errorMessage,
-        });
-        toast.error(errorMessage);
-      } finally {
-        setIsLoading(false);
-      }
+      // 結果ページにすぐに遷移
+      router.push('/results');
+    } catch (err) {
+      console.error('検索開始エラー:', err);
+      const errorMessage = '検索の開始に失敗しました';
+      setError({
+        type: 'network',
+        message: errorMessage,
+      });
+      toast.error(errorMessage);
+      setIsLoading(false);
     }
   };
+
 
   /**
    * バリデーションエラーハンドラ

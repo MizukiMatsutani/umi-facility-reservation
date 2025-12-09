@@ -32,7 +32,8 @@ export class FacilityScraper {
     enableResourceBlocking: options.enableResourceBlocking ?? false,
     reportProgress: options.reportProgress ?? false,
     fallbackOnError: options.fallbackOnError ?? true,
-    progressCallback: options.progressCallback,  // コールバックを追加
+    progressCallback: options.progressCallback,  // プログレスコールバック
+    partialResultCallback: options.partialResultCallback,  // 部分結果コールバック
   };
 }
 
@@ -254,6 +255,22 @@ export class FacilityScraper {
 
         // 結果を蓄積
         allResults.push(...results);
+
+        // 部分結果を報告（段階的レンダリング用）
+        console.log(`🔍 部分結果コールバックチェック: callback=${!!this.options.partialResultCallback}, results=${results.length}件`);
+        if (this.options.partialResultCallback) {
+          try {
+            const dateStr = format(currentDate, 'yyyy-MM-dd');
+            console.log(`📤 部分結果送信: ${dateStr}, ${results.length}施設`);
+            this.options.partialResultCallback(dateStr, results);
+            console.log(`✅ 部分結果送信完了: ${dateStr}`);
+          } catch (error) {
+            // コールバックエラーは無視（スクレイピングは継続）
+            console.warn('⚠️ 部分結果コールバックエラー:', error);
+          }
+        } else {
+          console.log('⚠️ 部分結果コールバックが設定されていません');
+        }
 
         // 最後の日付でなければ、施設別空き状況ページに戻る
         if (i < dates.length - 1) {

@@ -1,3 +1,5 @@
+import type { FacilityAvailability } from '@/lib/types';
+
 /**
  * プログレス報告のコールバック関数型
  *
@@ -9,6 +11,19 @@ export type ProgressCallback = (
   step: string,
   progress: number,
   currentDate?: Date
+) => void;
+
+/**
+ * 部分結果報告のコールバック関数型
+ *
+ * 各日付の処理完了時に呼び出され、その日付の施設データを外部に通知します
+ *
+ * @param date - 処理完了した日付（YYYY-MM-DD形式）
+ * @param facilities - その日付の施設空き状況データ
+ */
+export type PartialResultCallback = (
+  date: string,
+  facilities: FacilityAvailability[]
 ) => void;
 
 /**
@@ -62,4 +77,15 @@ export interface ScraperOptions {
    * @default undefined
    */
   progressCallback?: ProgressCallback;
+
+  /**
+   * 部分結果報告用のコールバック関数
+   *
+   * 各日付の処理完了時に、その日付の施設データを外部に通知します
+   * 段階的レンダリングなど、リアルタイムでデータを表示する際に使用します
+   * コールバック内でエラーが発生してもスクレイピング処理は中断されません
+   *
+   * @default undefined
+   */
+  partialResultCallback?: PartialResultCallback;
 }
