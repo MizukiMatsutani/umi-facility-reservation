@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import FacilityCard from '@/components/FacilityCard';
+import FacilityCardSkeleton from '@/components/FacilityCardSkeleton';
 import type { FacilityAvailability, SearchParams } from '@/lib/types';
 import { formatDate } from '@/lib/utils/date';
 import { ArrowLeft, Calendar, Building2, AlertTriangle, CheckCircle2, ChevronDown, Loader2 } from 'lucide-react';
@@ -286,31 +287,54 @@ export default function ResultsPage() {
           </div>
         )}
 
-        {/* 段階的に表示される施設カード */}
-        {facilities.length > 0 && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="flex items-center justify-center rounded-full bg-green-100 p-2">
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
+        {/* 施設カード表示エリア */}
+        <div className="space-y-4">
+          {/* ローディング中でデータがまだ0件の場合はスケルトンを表示 */}
+          {isLoading && facilities.length === 0 && (
+            <>
+              <div className="flex items-center gap-3 mb-5">
+                <div className="flex items-center justify-center rounded-full bg-gray-100 p-2">
+                  <Building2 className="h-5 w-5 text-gray-600" />
+                </div>
+                <h2 className="text-xl font-semibold text-gray-900">
+                  施設を取得中...
+                </h2>
               </div>
-              <h2 className="text-xl font-semibold text-gray-900">
-                {isLoading ? '取得済み施設' : '検索結果'}
-                <span className="ml-3 inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-800">
-                  {facilities.length}件
-                </span>
-              </h2>
-            </div>
-            {facilities.map((facility, index) => (
-              <div
-                key={facility.facility.id}
-                className="animate-fade-in-up"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <FacilityCard facilityAvailability={facility} />
+              {/* スケルトンカードを5枚表示 */}
+              {[1, 2, 3, 4, 5].map((index) => (
+                <div key={`skeleton-${index}`}>
+                  <FacilityCardSkeleton />
+                </div>
+              ))}
+            </>
+          )}
+
+          {/* データが1件以上ある場合は実際のカードを表示 */}
+          {facilities.length > 0 && (
+            <>
+              <div className="flex items-center gap-3 mb-5">
+                <div className="flex items-center justify-center rounded-full bg-green-100 p-2">
+                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                </div>
+                <h2 className="text-xl font-semibold text-gray-900">
+                  {isLoading ? '取得済み施設' : '検索結果'}
+                  <span className="ml-3 inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-800">
+                    {facilities.length}件
+                  </span>
+                </h2>
               </div>
-            ))}
-          </div>
-        )}
+              {facilities.map((facility, index) => (
+                <div
+                  key={facility.facility.id}
+                  className="animate-fade-in-up"
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
+                  <FacilityCard facilityAvailability={facility} />
+                </div>
+              ))}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
