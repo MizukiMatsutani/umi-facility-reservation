@@ -4,6 +4,8 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import FacilityCard from '@/components/FacilityCard';
 import FacilityCardSkeleton from '@/components/FacilityCardSkeleton';
+import { ToastContainer } from '@/components/ui/Toast';
+import { useToast } from '@/hooks/useToast';
 import type { FacilityAvailability, SearchParams } from '@/lib/types';
 import { formatDate } from '@/lib/utils/date';
 import { ArrowLeft, Calendar, Building2, AlertTriangle, CheckCircle2, ChevronDown, Loader2 } from 'lucide-react';
@@ -15,6 +17,7 @@ import { ArrowLeft, Calendar, Building2, AlertTriangle, CheckCircle2, ChevronDow
  */
 export default function ResultsPage() {
   const router = useRouter();
+  const toast = useToast();
   const [facilities, setFacilities] = useState<FacilityAvailability[]>([]);
   const [searchParams, setSearchParams] = useState<SearchParams | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -115,6 +118,9 @@ export default function ResultsPage() {
             eventSource.close();
             eventSourceRef.current = null;
             setIsLoading(false);
+
+            // 完了トーストを表示
+            toast.success('すべての施設の取得が完了しました');
           } else if (data.type === 'error') {
             // エラー受信
             console.error('[SSE] エラー受信:', data.message);
@@ -214,8 +220,12 @@ export default function ResultsPage() {
 
   // ローディング中またはデータ受信中、または完了後の表示（UIを統一）
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-4xl">
+    <>
+      {/* トースト通知コンテナ */}
+      <ToastContainer toasts={toast.toasts} onClose={toast.removeToast} />
+
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-8 px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-4xl">
         {/* ヘッダー */}
         <header className="mb-8 animate-fade-in">
           <div className="flex items-center justify-between mb-4">
@@ -335,7 +345,22 @@ export default function ResultsPage() {
             </>
           )}
         </div>
+
+        {/* フッター：下部に固定された「新しい検索」ボタン */}
+        {!isLoading && facilities.length > 0 && (
+          <div className="mt-8 pb-4">
+            <button
+              type="button"
+              onClick={handleNewSearch}
+              className="w-full group inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-3 text-base font-semibold text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105"
+            >
+              <ArrowLeft className="h-5 w-5" />
+              新しい検索
+            </button>
+          </div>
+        )}
       </div>
     </div>
+    </>
   );
 }
